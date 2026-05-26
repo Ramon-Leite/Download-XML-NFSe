@@ -1101,7 +1101,7 @@ def salvar_xmls_dir(xmls_dir: str = Form(...)):
 
 @router.get("/atualizador/checar")
 def checar_atualizacao():
-    versao_local = "1.0"
+    versao_local = "1.1"
     try:
         import requests
         url = config.GITHUB_UPDATE_URL
