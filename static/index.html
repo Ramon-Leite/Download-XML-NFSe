@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html class="light" lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Fiscal Manager - NFS-e Nacional Portal</title>
+    <!-- Custom Favicon Integration -->
+    <link rel="icon" type="image/png" href="/static/app_icon.png?v=1.0.5">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=1.0.5">
+    <!-- Tailwind CSS with Forms and Container Queries -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Material Symbols Outlined -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <!-- ChartJS for beautiful Bento Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/style.css?v=1.0.5">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#001a41",
+                        "outline-variant": "#c1c6d6",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed": "#dfe3e8",
+                        "on-primary-fixed-variant": "#004493",
+                        "on-tertiary-container": "#000414",
+                        "secondary": "#5b5f64",
+                        "on-secondary-container": "#5f6368",
+                        "on-primary-container": "#ffffff",
+                        "surface-dim": "#d9dadb",
+                        "secondary-fixed-dim": "#c3c7cc",
+                        "surface-variant": "#e1e3e4",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#005bc0",
+                        "tertiary-fixed-dim": "#aec6ff",
+                        "on-surface": "#191c1d",
+                        "inverse-surface": "#2e3132",
+                        "tertiary-fixed": "#d8e2ff",
+                        "surface-bright": "#f8f9fa",
+                        "primary-fixed-dim": "#adc7ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#004397",
+                        "background": "#f8f9fa",
+                        "primary": "#005bbf",
+                        "on-background": "#191c1d",
+                        "on-secondary-fixed-variant": "#43474c",
+                        "warning": "#F9AB00",
+                        "primary-container": "#1a73e8",
+                        "surface-container": "#edeeef",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#d8e2ff",
+                        "tertiary": "#195abc",
+                        "surface-container-low": "#f3f4f5",
+                        "error": "#D93025",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#adc7ff",
+                        "surface": "#FFFFFF",
+                        "secondary-container": "#dde0e6",
+                        "on-surface-variant": "#414754",
+                        "success": "#1E8E3E",
+                        "on-tertiary-fixed": "#001a43",
+                        "border": "#DADCE0",
+                        "outline": "#727785",
+                        "on-secondary-fixed": "#181c20",
+                        "tertiary-container": "#3d74d7",
+                        "error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max-width": "1280px",
+                        "margin-mobile": "16px",
+                        "gutter": "16px",
+                        "base": "8px",
+                        "margin-desktop": "24px"
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-background text-on-surface">
+
+    <!-- Sidebar Navigation -->
+    <aside
+        class="fixed h-full left-0 top-0 w-[280px] bg-surface border-r border-border flex flex-col py-6 gap-2 hidden md:flex z-20">
+        <div class="px-6 mb-8 flex items-center justify-between gap-3 sidebar-header">
+            <div class="flex items-center gap-3 sidebar-logo-area">
+                <span class="material-symbols-outlined text-primary text-4xl">account_balance_wallet</span>
+                <div class="sidebar-logo-text">
+                    <h1 class="font-bold text-xl text-primary leading-tight">Fiscal Manager</h1>
+                    <p class="text-xs text-on-surface-variant">NFS-e Portal Nacional</p>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" id="btn-toggle-sidebar"
+                class="h-9 w-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all"
+                title="Fechar barra lateral">
+                <span class="material-symbols-outlined text-[20px]">left_panel_close</span>
+            </button>
+        </div>
+        <nav class="flex-1 flex flex-col gap-1.5" id="desktop-nav">
+            <!-- Dynamic Active Classes via JS -->
+            <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-item active" title="Dashboard">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span>Dashboard</span>
+            </button>
+            <button onclick="switchView('empresas')" id="nav-empresas" class="nav-item" title="Empresas">
+                <span class="material-symbols-outlined">business</span>
+                <span>Empresas</span>
+            </button>
+            <button onclick="switchView('downloads')" id="nav-downloads" class="nav-item" title="Download XML">
+                <span class="material-symbols-outlined">cloud_download</span>
+                <span>Download XML</span>
+            </button>
+            <button onclick="switchView('notas')" id="nav-notas" class="nav-item" title="Notas Fiscais">
+                <span class="material-symbols-outlined">receipt_long</span>
+                <span>Notas Fiscais</span>
+            </button>
+            <button onclick="switchView('faturamento')" id="nav-faturamento" class="nav-item" title="Faturamento">
+                <span class="material-symbols-outlined">payments</span>
+                <span>Faturamento</span>
+            </button>
+            <button onclick="switchView('agendamentos')" id="nav-agendamentos" class="nav-item" title="Agendamentos">
+                <span class="material-symbols-outlined">alarm</span>
+                <span>Agendamentos</span>
+            </button>
+            <button onclick="switchView('config')" id="nav-config" class="nav-item" title="Config & Backup">
+                <span class="material-symbols-outlined">settings_backup_restore</span>
+                <span>Config & Backup</span>
+            </button>
+        </nav>
+
+        <!-- Expanded connection card -->
+        <div
+            class="mt-auto px-6 py-4 bg-surface-container-low rounded-xl mx-4 border border-border/40 connection-card-full">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="w-2.5 h-2.5 bg-success rounded-full animate-pulse"></span>
+                <span class="text-xs font-medium text-success">Conexão Ativa</span>
+            </div>
+            <p class="text-[11px] text-on-surface-variant">Backend FastAPI rodando localmente.</p>
+        </div>
+
+        <!-- Collapsed connection dot -->
+        <div class="connection-card-collapsed hidden py-4 mt-auto flex justify-center"
+            title="Conexão Ativa - FastAPI rodando localmente">
+            <span class="w-3.5 h-3.5 bg-success rounded-full animate-pulse border-2 border-surface shadow-sm"></span>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="md:ml-[280px] min-h-screen pb-20 md:pb-6 flex flex-col">
+        <!-- Top Header -->
+        <header
+            class="bg-surface border-b border-border shadow-sm flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop h-16 sticky top-0 z-10">
+            <div class="flex items-center gap-4">
+                <button class="md:hidden text-on-surface p-2 hover:bg-surface-container rounded-full"
+                    onclick="toggleMobileMenu()">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <span class="font-title-lg text-title-lg font-bold text-primary flex items-center gap-2"
+                    id="current-view-title">
+                    Dashboard
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <div class="px-3 py-1 bg-primary/10 text-primary font-bold text-xs rounded-full uppercase"
+                    id="env-badge">
+                    Produção
+                </div>
+                <button
+                    class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors"
+                    onclick="toggleTheme()" title="Alternar Tema Claro/Escuro">
+                    <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+                </button>
+                <div class="relative">
+                    <button
+                        class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors relative"
+                        onclick="toggleNotificationsMenu(event)" title="Notificações" id="btn-notifications">
+                        <span class="material-symbols-outlined">notifications</span>
+                        <span id="notification-badge"
+                            class="absolute top-1.5 right-1.5 w-4 h-4 bg-error text-on-error text-[8px] font-bold rounded-full flex items-center justify-center hidden">0</span>
+                    </button>
+                    <!-- Notifications Dropdown Popover -->
+                    <div id="notifications-menu"
+                        class="absolute right-0 top-12 w-80 max-h-96 overflow-hidden rounded-2xl bg-surface-container shadow-lg border border-border/40 hidden z-50 flex flex-col transition-all duration-200">
+                        <div
+                            class="p-4 border-b border-border/40 flex justify-between items-center bg-surface-container-high">
+                            <h4 class="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px] text-primary">notifications</span>
+                                Notificações
+                            </h4>
+                            <button onclick="limparNotificacoes(event)"
+                                class="text-[10px] text-primary hover:text-primary-dim font-bold transition-colors">Limpar
+                                Tudo</button>
+                        </div>
+                        <div id="notifications-list"
+                            class="overflow-y-auto max-h-64 custom-scrollbar divide-y divide-border/20 flex-1 p-2 flex flex-col gap-1.5">
+                            <p class="text-[11px] text-on-surface-variant text-center py-8">Nenhuma notificação
+                                encontrada.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Toast Notifications Container -->
+        <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+        <!-- MAIN SPA VIEWS -->
+        <div class="main-content-container w-full mx-auto p-margin-mobile md:p-margin-desktop flex-1">
+
+            <!-- 1. DASHBOARD VIEW -->
+            <div id="view-dashboard" class="spa-view active">
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">Painel de
+                            Controle</h2>
+                        <p class="text-body-md text-on-surface-variant">Visão geral do faturamento e downloads
+                            automáticos.</p>
+                    </div>
+                    <button onclick="refreshDashboard()"
+                        class="h-10 px-4 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-all font-medium text-sm flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">sync</span>
+                        Atualizar Painel
+                    </button>
+                </div>
+
+                <!-- Bento Grid Statistics -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <!-- Total Revenue Card (Primary color glow) -->
+                    <div
+                        class="bg-primary text-on-primary rounded-2xl p-6 flex flex-col justify-between shadow-lg relative overflow-hidden group">
+                        <div class="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-10">
+                            <span class="material-symbols-outlined text-[120px]">payments</span>
+                        </div>
+                        <div>
+                            <span class="material-symbols-outlined text-[28px] opacity-95">trending_up</span>
+                            <p class="text-xs font-semibold mt-2 opacity-85 uppercase tracking-wider">Faturamento
+                                Simples Nac.</p>
+                        </div>
+                        <div class="mt-4">
+                            <h3 class="text-3xl font-extrabold" id="dash-faturamento-total">R$ 0,00</h3>
+                            <p class="text-[11px] opacity-80 mt-1">Soma de notas de competência do ano corrente</p>
+                        </div>
+                    </div>
+
+                    <!-- Total Notes Card -->
+                    <div
+                        class="bg-surface border border-border/60 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
+                        <div class="flex justify-between items-start">
+                            <div class="p-2.5 bg-surface-container-high rounded-xl text-primary">
+                                <span class="material-symbols-outlined text-[24px]">receipt_long</span>
+                            </div>
+                            <span class="text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded-full"
+                                id="dash-notas-novas-delta">+0</span>
+                        </div>
+                        <div class="mt-6">
+                            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Notas
+                                Catalogadas</p>
+                            <h3 class="text-3xl font-extrabold text-on-surface mt-1" id="dash-total-notas">0</h3>
+                            <p class="text-[11px] text-on-surface-variant mt-1">Acumulado total no banco de dados</p>
+                        </div>
+                    </div>
+
+                    <!-- Active Companies Card -->
+                    <div
+                        class="bg-surface border border-border/60 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
+                        <div class="flex justify-between items-start">
+                            <div class="p-2.5 bg-surface-container-high rounded-xl text-tertiary">
+                                <span class="material-symbols-outlined text-[24px]">business</span>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Empresas
+                                Monitoradas</p>
+                            <h3 class="text-3xl font-extrabold text-on-surface mt-1" id="dash-total-empresas">0</h3>
+                            <p class="text-[11px] text-on-surface-variant mt-1">Empresas ativas cadastradas</p>
+                        </div>
+                    </div>
+
+                    <!-- Recent Errors Card -->
+                    <div
+                        class="bg-surface border border-border/60 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
+                        <div class="flex justify-between items-start">
+                            <div class="p-2.5 bg-error-container rounded-xl text-error">
+                                <span class="material-symbols-outlined text-[24px]">report</span>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Erros
+                                Recentes</p>
+                            <h3 class="text-3xl font-extrabold text-on-surface mt-1" id="dash-erros-recentes">0</h3>
+                            <p class="text-[11px] text-on-surface-variant mt-1">Erros em execuções de agendador</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bento Row 2: Charts and Quick list -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <!-- Revenue Chart Card -->
+                    <div
+                        class="md:col-span-2 bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-title-md text-on-surface mb-1">Evolução do Faturamento</h4>
+                            <p class="text-xs text-on-surface-variant mb-4">Competência acumulada mensal emitida.</p>
+                        </div>
+                        <div class="relative h-[280px]">
+                            <canvas id="faturamentoChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Quick Company Rankings -->
+                    <div class="bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex flex-col">
+                        <div>
+                            <h4 class="font-bold text-title-md text-on-surface mb-1">Faturamento no Mês</h4>
+                            <p class="text-xs text-on-surface-variant mb-4">Ranking de empresas no período atual.</p>
+                        </div>
+                        <div class="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar space-y-3.5 pr-1"
+                            id="dash-ranking-empresas">
+                            <!-- Dynamic Content -->
+                            <p class="text-xs text-on-surface-variant text-center py-10">Carregando dados das
+                                empresas...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. EMPRESAS VIEW -->
+            <div id="view-empresas" class="spa-view hidden">
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">Gestão de
+                            Empresas</h2>
+                        <p class="text-body-md text-on-surface-variant">Cadastre e monitore empresas e seus certificados
+                            digitais A1.</p>
+                    </div>
+                    <button onclick="openCadastroModal()"
+                        class="h-11 px-5 bg-primary text-on-primary rounded-full hover:opacity-90 active:scale-[0.98] transition-all font-medium text-sm flex items-center gap-2 shadow-sm">
+                        <span class="material-symbols-outlined text-[18px]">add</span>
+                        Nova Empresa
+                    </button>
+                </div>
+
+                <!-- Critical/Warning Certificate Alerts -->
+                <div id="empresas-alerts-container" class="mb-6 space-y-2 hidden"></div>
+
+                <!-- Companies Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="empresas-cards-container">
+                    <!-- Dynamic cards filled by JS -->
+                    <div class="col-span-full text-center py-20 text-on-surface-variant">
+                        <p class="text-sm">Buscando empresas cadastradas...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. DOWNLOAD VIEW -->
+            <div id="view-downloads" class="spa-view hidden">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <!-- Configuration Form -->
+                    <div
+                        class="md:col-span-6 bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+                        <h3 class="font-bold text-title-lg text-primary mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined">settings_suggest</span>
+                            Parâmetros de Busca
+                        </h3>
+
+                        <div class="flex-1 flex flex-col justify-between">
+                            <div class="space-y-4">
+                                <!-- Mode Toggle Tabs (Individual / Lote / Import) -->
+                                <div>
+                                    <label
+                                        class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Modo
+                                        de Operação</label>
+                                    <div class="flex bg-surface-container rounded-xl p-1 border border-border/40">
+                                        <button onclick="setDownloadMode('individual')" id="btn-mode-ind"
+                                            class="flex-1 py-2 text-xs font-semibold rounded-lg bg-surface text-primary shadow-sm transition-all">Individual</button>
+                                        <button onclick="setDownloadMode('lote')" id="btn-mode-lote"
+                                            class="flex-1 py-2 text-xs font-semibold rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all">Em
+                                            Lote</button>
+                                        <button onclick="setDownloadMode('import')" id="btn-mode-imp"
+                                            class="flex-1 py-2 text-xs font-semibold rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all">Importar
+                                            XML</button>
+                                    </div>
+                                </div>
+
+                                <!-- Individual fields -->
+                                <div id="dl-individual-fields" class="space-y-4">
+                                    <div>
+                                        <label
+                                            class="block text-label-md font-label-md text-on-surface-variant mb-1.5">Empresa</label>
+                                        <select id="dl-empresa-select"
+                                            class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all"></select>
+                                    </div>
+                                </div>
+
+                                <!-- Lote summary -->
+                                <div id="dl-lote-fields"
+                                    class="p-3 bg-primary/5 rounded-xl border border-primary/20 hidden">
+                                    <p class="text-xs text-primary font-medium flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[16px]">info</span>
+                                        <span>Todas as empresas ativas serão sincronizadas em lote sequencial.</span>
+                                    </p>
+                                </div>
+
+                                <!-- Common download filters -->
+                                <div id="dl-filters-fields" class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label
+                                                class="block text-label-md font-label-md text-on-surface-variant mb-1.5">Tipo
+                                                de Notas</label>
+                                            <select id="dl-tipo-select"
+                                                class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all">
+                                                <option value="AMBAS" selected>Ambas (Emitidas & Recebidas)</option>
+                                                <option value="EMITIDA">Emitidas</option>
+                                                <option value="RECEBIDA">Recebidas</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="block text-label-md font-label-md text-on-surface-variant mb-1.5">Tipo
+                                                de Período</label>
+                                            <select id="dl-periodo-select"
+                                                class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all">
+                                                <option value="emissao" selected>Data de Emissão</option>
+                                                <option value="competencia">Data de Competência</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label
+                                                class="block text-label-md font-label-md text-on-surface-variant mb-1.5">Data
+                                                Início</label>
+                                            <input type="date" id="dl-date-inicio"
+                                                class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all">
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="block text-label-md font-label-md text-on-surface-variant mb-1.5">Data
+                                                Fim</label>
+                                            <input type="date" id="dl-date-fim"
+                                                class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all">
+                                        </div>
+                                    </div>
+
+                                    <div id="dl-reescanear-container" class="flex items-center gap-2 pt-2">
+                                        <input type="checkbox" id="dl-reescanear"
+                                            class="h-4 w-4 text-primary focus:ring-primary border-border rounded">
+                                        <label for="dl-reescanear"
+                                            class="text-xs text-on-surface-variant select-none">🔄 Reescanear tudo desde
+                                            o início (ignorar último NSU salvo)</label>
+                                    </div>
+                                </div>
+
+                                <!-- Import Fields -->
+                                <div id="dl-import-fields" class="space-y-4 hidden">
+                                    <div>
+                                        <label
+                                            class="block text-label-md font-label-md text-on-surface-variant mb-1.5">Empresa
+                                            de Destino</label>
+                                        <select id="dl-empresa-import-select"
+                                            class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all"></select>
+                                    </div>
+                                    <div
+                                        class="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary hover:bg-primary/5 transition-all relative">
+                                        <input type="file" id="dl-import-file-input" multiple accept=".xml"
+                                            class="absolute inset-0 opacity-0 cursor-pointer">
+                                        <span
+                                            class="material-symbols-outlined text-[42px] text-on-surface-variant">upload_file</span>
+                                        <p class="text-xs font-semibold mt-2 text-on-surface">Arraste ou clique para
+                                            selecionar arquivos XML</p>
+                                        <p class="text-[10px] text-on-surface-variant mt-1">Apenas arquivos .xml válidos
+                                        </p>
+                                        <div id="dl-import-selected-count"
+                                            class="mt-3 text-xs text-primary font-bold hidden"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onclick="triggerDownloadAction()" id="btn-dl-executar"
+                                class="w-full h-12 bg-primary text-on-primary rounded-full font-semibold text-label-lg flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 shadow-md transition-all mt-6">
+                                <span class="material-symbols-outlined text-[20px]">search</span>
+                                Buscar NFS-e Nacional
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Terminal Output & Progress -->
+                    <div class="md:col-span-6 md:grid md:grid-rows-[auto_1fr] flex flex-col gap-6">
+                        <!-- Stats Summary Card (Hidden initially) -->
+                        <div id="dl-stats-container"
+                            class="bg-surface border border-border/60 rounded-2xl p-6 shadow-sm hidden">
+                            <h4 class="font-bold text-title-md text-on-surface mb-3 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[20px] text-success">analytics</span>
+                                Estatísticas do Download
+                            </h4>
+                            <div class="grid grid-cols-4 gap-4">
+                                <div
+                                    class="bg-surface-container-low p-3 rounded-xl text-center border border-border/40">
+                                    <h5 class="text-xs text-on-surface-variant font-medium">Localizadas</h5>
+                                    <p class="text-xl font-bold mt-1 text-on-surface" id="dl-stat-encontradas">0</p>
+                                </div>
+                                <div class="bg-success/10 p-3 rounded-xl text-center border border-success/20">
+                                    <h5 class="text-xs text-success font-medium">Novas</h5>
+                                    <p class="text-xl font-bold mt-1 text-success" id="dl-stat-novas">0</p>
+                                </div>
+                                <div
+                                    class="bg-surface-container-low p-3 rounded-xl text-center border border-border/40">
+                                    <h5 class="text-xs text-on-surface-variant font-medium">Já Salvas</h5>
+                                    <p class="text-xl font-bold mt-1 text-on-surface" id="dl-stat-duplicadas">0</p>
+                                </div>
+                                <div class="bg-error/10 p-3 rounded-xl text-center border border-error/20">
+                                    <h5 class="text-xs text-error font-medium">Erros</h5>
+                                    <p class="text-xl font-bold mt-1 text-error" id="dl-stat-erros">0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Progress Panel -->
+                        <div
+                            class="bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex-1 flex flex-col justify-between min-h-[300px]">
+                            <div>
+                                <h4 class="font-bold text-title-md text-on-surface mb-2 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[20px] text-primary">terminal</span>
+                                    Saída de Log em Tempo Real
+                                </h4>
+                                <p class="text-xs text-on-surface-variant mb-4">Acompanhe as chamadas de API e extrações
+                                    de XML.</p>
+                            </div>
+
+                            <div class="bg-neutral-900 rounded-xl p-4 font-mono text-[11px] text-neutral-300 overflow-y-auto h-[260px] max-h-[260px] custom-scrollbar border border-neutral-800"
+                                id="dl-terminal">
+                                <p class="text-neutral-500">// Aguardando disparo de operação...</p>
+                            </div>
+
+                            <div class="mt-4 pt-4 border-t border-border/60">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-semibold text-primary"
+                                        id="dl-progress-percentage">Progresso: 0%</span>
+                                    <span class="text-[10px] text-on-surface-variant" id="dl-progress-msg">Pronto</span>
+                                </div>
+                                <div class="w-full bg-surface-container rounded-full h-2.5 overflow-hidden">
+                                    <div class="bg-primary h-full rounded-full transition-all duration-300"
+                                        id="dl-progress-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. NOTAS FISCAIS VIEW -->
+            <div id="view-notas" class="spa-view hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Left Sidebar Filters -->
+                    <div
+                        class="lg:col-span-3 bg-surface border border-border/60 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
+                        <h3 class="font-bold text-title-md text-on-surface mb-1 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">filter_alt</span>
+                            Filtros de Busca
+                        </h3>
+
+                        <!-- Search query -->
+                        <div>
+                            <label class="block text-xs font-semibold text-on-surface-variant mb-1">Busca
+                                Textual</label>
+                            <div class="relative">
+                                <input type="text" id="filter-notas-busca" placeholder="Nº, Prestador, Tomador..."
+                                    class="w-full h-10 pl-8 pr-3 text-xs border border-border rounded-lg focus:border-primary focus:ring-primary bg-surface-container-lowest">
+                                <span
+                                    class="material-symbols-outlined text-[16px] text-on-surface-variant absolute left-2.5 top-3 select-none">search</span>
+                            </div>
+                        </div>
+
+                        <!-- Company Select -->
+                        <div>
+                            <label class="block text-xs font-semibold text-on-surface-variant mb-1">Empresa</label>
+                            <select id="filter-notas-empresa"
+                                class="w-full h-10 px-2 text-xs border border-border rounded-lg focus:border-primary bg-surface-container-lowest">
+                                <option value="todas">Todas as Empresas</option>
+                            </select>
+                        </div>
+
+                        <!-- Type Select -->
+                        <div>
+                            <label class="block text-xs font-semibold text-on-surface-variant mb-1">Tipo da Nota</label>
+                            <select id="filter-notas-tipo"
+                                class="w-full h-10 px-2 text-xs border border-border rounded-lg focus:border-primary bg-surface-container-lowest">
+                                <option value="todas" selected>Todas as Notas</option>
+                                <option value="EMITIDA">Emitidas (Normais)</option>
+                                <option value="RECEBIDA">Recebidas (Normais)</option>
+                                <option value="CANCELADA">Canceladas</option>
+                                <option value="SUBSTITUIDA">Substituídas</option>
+                            </select>
+                        </div>
+
+                        <!-- Date range toggle -->
+                        <div class="space-y-2 pt-2 border-t border-border/40">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="filter-notas-enable-data"
+                                    class="h-4 w-4 text-primary border-border rounded">
+                                <label for="filter-notas-enable-data"
+                                    class="text-xs text-on-surface font-semibold select-none">Filtrar por
+                                    Período</label>
+                            </div>
+
+                            <div id="filter-notas-data-fields" class="space-y-2 hidden">
+                                <div>
+                                    <label
+                                        class="block text-[10px] font-semibold text-on-surface-variant mb-0.5">Filtrar
+                                        Campo</label>
+                                    <div class="flex gap-2">
+                                        <label class="flex items-center gap-1 text-[11px]"><input type="radio"
+                                                name="filter-campo-data" value="emissao" checked>Emissão</label>
+                                        <label class="flex items-center gap-1 text-[11px]"><input type="radio"
+                                                name="filter-campo-data" value="competencia">Competência</label>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label
+                                            class="block text-[10px] font-semibold text-on-surface-variant mb-0.5">De</label>
+                                        <input type="date" id="filter-notas-data-inicio"
+                                            class="w-full h-9 px-2 text-xs border border-border rounded-lg">
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="block text-[10px] font-semibold text-on-surface-variant mb-0.5">Até</label>
+                                        <input type="date" id="filter-notas-data-fim"
+                                            class="w-full h-9 px-2 text-xs border border-border rounded-lg">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trigger Button -->
+                        <button onclick="refreshNotasTable(1)"
+                            class="w-full h-10 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-medium text-xs flex items-center justify-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">refresh</span>
+                            Aplicar Filtros
+                        </button>
+                    </div>
+
+                    <!-- Table Data View -->
+                    <div class="lg:col-span-9 space-y-6">
+                        <!-- Gap Detection banner (hidden initially) -->
+                        <div id="notas-gap-banner"
+                            class="hidden bg-warning/10 text-on-surface border border-warning/30 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                            <span class="material-symbols-outlined text-warning text-3xl">warning</span>
+                            <div class="flex-1">
+                                <h4 class="text-xs font-bold text-on-surface">Notas Faltantes na Sequência de Numeração
+                                </h4>
+                                <p class="text-[11px] text-on-surface-variant mt-0.5" id="notas-gap-msg"></p>
+                            </div>
+                        </div>
+
+                        <!-- Statistics Header Cards -->
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="bg-surface border border-border/40 p-4 rounded-xl shadow-xs">
+                                <h5 class="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider">
+                                    Notas Filtradas</h5>
+                                <p class="text-2xl font-bold mt-1 text-on-surface" id="notas-stat-total">0</p>
+                            </div>
+                            <div class="bg-surface border border-border/40 p-4 rounded-xl shadow-xs">
+                                <h5 class="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider">
+                                    Emitidas</h5>
+                                <p class="text-2xl font-bold mt-1 text-on-surface" id="notas-stat-emitidas">0</p>
+                            </div>
+                            <div class="bg-surface border border-border/40 p-4 rounded-xl shadow-xs">
+                                <h5 class="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider">
+                                    Recebidas</h5>
+                                <p class="text-2xl font-bold mt-1 text-on-surface" id="notas-stat-recebidas">0</p>
+                            </div>
+                            <div class="bg-primary/5 border border-primary/20 p-4 rounded-xl shadow-xs">
+                                <h5 class="text-[10px] text-primary font-semibold uppercase tracking-wider">Valor
+                                    Acumulado</h5>
+                                <p class="text-2xl font-bold mt-1 text-primary" id="notas-stat-valor">R$ 0,00</p>
+                            </div>
+                        </div>
+
+                        <!-- Material Data Table Card -->
+                        <div
+                            class="bg-surface border border-border/60 rounded-2xl shadow-sm overflow-hidden flex flex-col justify-between min-h-[350px]">
+                            <!-- Header actions -->
+                            <div
+                                class="px-6 py-4 border-b border-border/60 flex justify-between items-center bg-surface-bright/50">
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox" id="notas-select-all" onclick="toggleSelectAllNotas()"
+                                        class="h-4.5 w-4.5 text-primary border-border rounded focus:ring-primary">
+                                    <span class="text-xs text-on-surface font-semibold" id="notas-selected-counter">0
+                                        notas selecionadas</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="notasBatchAction('sincronizar')"
+                                        class="table-action-btn border border-border/80 hover:bg-surface-container"
+                                        title="Sincronizar Eventos de Notas Selecionadas">
+                                        <span class="material-symbols-outlined text-[16px] text-primary">sync</span>
+                                        <span class="text-xs font-semibold text-primary">Sincronizar</span>
+                                    </button>
+                                    <button onclick="notasBatchAction('excel')"
+                                        class="table-action-btn border border-border/80 hover:bg-surface-container"
+                                        title="Exportar Notas para Excel">
+                                        <span
+                                            class="material-symbols-outlined text-[16px] text-success">analytics</span>
+                                        <span class="text-xs font-semibold text-success">Excel</span>
+                                    </button>
+                                    <button onclick="notasBatchAction('xml')"
+                                        class="table-action-btn border border-border/80 hover:bg-surface-container"
+                                        title="Baixar XMLs Compactados">
+                                        <span
+                                            class="material-symbols-outlined text-[16px] text-secondary">folder_zip</span>
+                                        <span class="text-xs font-semibold text-secondary">XMLs</span>
+                                    </button>
+                                    <button onclick="notasBatchAction('pdf')"
+                                        class="table-action-btn border border-border/80 hover:bg-surface-container"
+                                        title="Baixar PDFs Compactados">
+                                        <span
+                                            class="material-symbols-outlined text-[16px] text-secondary">picture_as_pdf</span>
+                                        <span class="text-xs font-semibold text-secondary">PDFs</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Table list -->
+                            <div class="overflow-x-auto custom-scrollbar flex-1">
+                                <table class="min-w-full text-left border-collapse text-xs table-fixed">
+                                    <colgroup>
+                                        <col style="width: 48px;"> <!-- Checkbox (w-12 equivalent for comfort) -->
+                                        <col style="width: 80px;"> <!-- Número -->
+                                        <col style="width: 80px;"> <!-- Nº DPS -->
+                                        <col style="width: 64px;"> <!-- Série -->
+                                        <col style="width: 96px;"> <!-- Emissão -->
+                                        <col style="width: 250px;"> <!-- Prestador -->
+                                        <col style="width: 250px;"> <!-- Tomador -->
+                                        <col style="width: 112px;"> <!-- Valor -->
+                                        <col style="width: 112px;"> <!-- Status -->
+                                        <col style="width: 80px;"> <!-- Ações -->
+                                    </colgroup>
+                                    <thead>
+                                        <tr class="bg-surface-container-low border-b border-border/60">
+                                            <th
+                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider">
+                                            </th>
+                                            <th onclick="ordenarNotasTable('numero')"
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                Número <span id="sort-icon-numero" class="text-[10px]"></span>
+                                            </th>
+                                            <th onclick="ordenarNotasTable('numero_dps')"
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                Nº DPS <span id="sort-icon-numero_dps" class="text-[10px]"></span>
+                                            </th>
+                                            <th onclick="ordenarNotasTable('serie')"
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                Série <span id="sort-icon-serie" class="text-[10px]"></span>
+                                            </th>
+                                            <th onclick="ordenarNotasTable('data_emissao')"
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                Emissão <span id="sort-icon-data_emissao" class="text-[10px]"></span>
+                                            </th>
+                                            <th onclick="ordenarNotasTable('prestador_nome')"
+                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                Prestador <span id="sort-icon-prestador_nome"
+                                                    class="text-[10px]"></span>
+                                            </th>
+                                            <th onclick="ordenarNotasTable('tomador_nome')"
+                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                Tomador <span id="sort-icon-tomador_nome" class="text-[10px]"></span>
+                                            </th>
+                                            <th onclick="ordenarNotasTable('valor_servicos')"
+                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-right cursor-pointer hover:text-primary transition-colors select-none">
+                                                Valor <span id="sort-icon-valor_servicos" class="text-[10px]"></span>
+                                            </th>
+                                            <th onclick="ordenarNotasTable('status')"
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
+                                                Status <span id="sort-icon-status" class="text-[10px]"></span>
+                                            </th>
+                                            <th
+                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center select-none">
+                                                Ações
+                                            </th>
+                                        </tr>
+                                        <!-- Row of Filters -->
+                                        <tr class="bg-surface-container/50 border-b border-border/40">
+                                            <th class="px-6 py-1.5"></th>
+                                            <th class="px-2 py-1.5"><input type="text"
+                                                    oninput="filtrarNotasColuna('numero', this.value)"
+                                                    placeholder="Filtrar..."
+                                                    class="w-full h-8 px-2 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
+                                            </th>
+                                            <th class="px-2 py-1.5"><input type="text"
+                                                    oninput="filtrarNotasColuna('numero_dps', this.value)"
+                                                    placeholder="Filtrar..."
+                                                    class="w-full h-8 px-2 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
+                                            </th>
+                                            <th class="px-2 py-1.5"><input type="text"
+                                                    oninput="filtrarNotasColuna('serie', this.value)"
+                                                    placeholder="Filtrar..."
+                                                    class="w-full h-8 px-2 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
+                                            </th>
+                                            <th class="px-2 py-1.5"><input type="text"
+                                                    oninput="filtrarNotasColuna('data_emissao', this.value)"
+                                                    placeholder="Filtrar..."
+                                                    class="w-full h-8 px-2 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
+                                            </th>
+                                            <th class="px-2 py-1.5"><input type="text"
+                                                    oninput="filtrarNotasColuna('prestador_nome', this.value)"
+                                                    placeholder="Filtrar..."
+                                                    class="w-full h-8 px-2 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
+                                            </th>
+                                            <th class="px-2 py-1.5"><input type="text"
+                                                    oninput="filtrarNotasColuna('tomador_nome', this.value)"
+                                                    placeholder="Filtrar..."
+                                                    class="w-full h-8 px-2 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
+                                            </th>
+                                            <th class="px-2 py-1.5"><input type="text"
+                                                    oninput="filtrarNotasColuna('valor_servicos', this.value)"
+                                                    placeholder="Filtrar..."
+                                                    class="w-full h-8 px-2 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary text-right">
+                                            </th>
+                                            <th class="px-2 py-1.5">
+                                                <select onchange="filtrarNotasColuna('status', this.value)"
+                                                    class="w-full h-8 px-1 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
+                                                    <option value="">Todos</option>
+                                                    <option value="NORMAL">NORMAL</option>
+                                                    <option value="CANCELADA">CANCELADA</option>
+                                                    <option value="SUBSTITUIDA">SUBSTITUÍDA</option>
+                                                </select>
+                                            </th>
+                                            <th class="px-6 py-1.5"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-border/40" id="notas-table-body">
+                                        <!-- Rows generated by JS -->
+                                        <tr>
+                                            <td colspan="10" class="text-center py-20 text-on-surface-variant">Selecione
+                                                filtros e clique em Aplicar.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Table Footer Paging -->
+                            <div
+                                class="px-6 py-3 border-t border-border/60 flex justify-between items-center bg-surface-bright/50 text-[11px]">
+                                <p class="text-on-surface-variant" id="notas-paging-msg">Mostrando 0 de 0 notas</p>
+                                <div class="flex gap-1">
+                                    <button id="btn-notas-page-prev"
+                                        class="p-1.5 border border-border/80 rounded-md hover:bg-surface-container disabled:opacity-50 transition-colors">
+                                        <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                                    </button>
+                                    <button id="btn-notas-page-next"
+                                        class="p-1.5 border border-border/80 rounded-md hover:bg-surface-container disabled:opacity-50 transition-colors">
+                                        <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. FATURAMENTO VIEW -->
+            <div id="view-faturamento" class="spa-view hidden">
+                <div class="bg-surface border border-border/60 rounded-2xl p-6 shadow-sm mb-6">
+                    <h3 class="font-bold text-title-lg text-primary mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">calendar_month</span>
+                        Período de Apuração
+                    </h3>
+
+                    <div class="flex flex-col md:flex-row gap-6 items-end">
+                        <div class="w-full md:w-1/4">
+                            <label class="block text-label-md font-label-md text-on-surface-variant mb-2">Mês de
+                                Referência</label>
+                            <select id="fat-mes-select"
+                                class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary text-body-md">
+                                <option value="1">Janeiro</option>
+                                <option value="2">Fevereiro</option>
+                                <option value="3">Março</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Maio</option>
+                                <option value="6">Junho</option>
+                                <option value="7">Julho</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
+                        <div class="w-full md:w-1/4">
+                            <label class="block text-label-md font-label-md text-on-surface-variant mb-2">Ano</label>
+                            <select id="fat-ano-select"
+                                class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary text-body-md">
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                            </select>
+                        </div>
+                        <div class="w-full md:w-1/4">
+                            <label class="block text-label-md font-label-md text-on-surface-variant mb-2">Filtrar
+                                por</label>
+                            <div class="flex h-11 p-1 bg-surface-container-high rounded-lg border border-border/40">
+                                <button id="btn-fat-comp" onclick="setFaturamentoFilter('competencia')"
+                                    class="flex-1 rounded-md text-xs font-bold bg-surface shadow-xs text-primary transition-all duration-200">Competência</button>
+                                <button id="btn-fat-emis" onclick="setFaturamentoFilter('emissao')"
+                                    class="flex-1 rounded-md text-xs font-bold text-on-surface-variant hover:bg-surface-container-highest transition-all duration-200">Emissão</button>
+                            </div>
+                        </div>
+                        <div class="w-full md:w-1/4">
+                            <button onclick="gerarRelatorioFaturamento()"
+                                class="w-full h-11 bg-primary text-on-primary rounded-full font-bold text-label-lg flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 shadow-sm transition-all">
+                                <span class="material-symbols-outlined text-[20px]">analytics</span>
+                                Gerar Relatório
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Container (Loaded dynamically) -->
+                <div id="faturamento-report-container" class="space-y-6 hidden">
+                    <!-- Report stats -->
+                    <div class="grid grid-cols-3 gap-6">
+                        <div class="bg-primary text-on-primary p-6 rounded-2xl shadow-md">
+                            <h5 class="text-xs opacity-80 font-bold uppercase tracking-wider">💰 Faturamento Total do
+                                Mês</h5>
+                            <p class="text-3xl font-black mt-2" id="fat-total-valor">R$ 0,00</p>
+                        </div>
+                        <div class="bg-surface border border-border/60 p-6 rounded-2xl shadow-sm">
+                            <h5 class="text-xs text-on-surface-variant font-bold uppercase tracking-wider">🏢 Empresas
+                                com Nota</h5>
+                            <p class="text-3xl font-black text-on-surface mt-2" id="fat-total-empresas">0</p>
+                        </div>
+                        <div class="bg-surface border border-border/60 p-6 rounded-2xl shadow-sm">
+                            <h5 class="text-xs text-on-surface-variant font-bold uppercase tracking-wider">📄 Total de
+                                Notas Emitidas</h5>
+                            <p class="text-3xl font-black text-on-surface mt-2" id="fat-total-notas">0</p>
+                        </div>
+                    </div>
+
+                    <!-- Resumo por Empresa -->
+                    <div class="bg-surface border border-border/60 rounded-2xl shadow-sm overflow-hidden">
+                        <div
+                            class="px-6 py-4 border-b border-border/60 flex justify-between items-center bg-surface-bright/50">
+                            <h4 class="font-bold text-title-md text-on-surface">Consolidado por Empresa</h4>
+                            <button onclick="downloadAllFaturamentoZip()"
+                                class="px-4 h-9 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-all font-semibold text-xs flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">folder_zip</span>
+                                Exportar Todos (ZIP XMLs)
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-surface-container-low border-b border-border/60">
+                                        <th
+                                            class="px-6 py-4 font-semibold text-on-surface-variant uppercase tracking-wider">
+                                            Empresa</th>
+                                        <th
+                                            class="px-6 py-4 font-semibold text-on-surface-variant uppercase tracking-wider">
+                                            CNPJ</th>
+                                        <th
+                                            class="px-6 py-4 font-semibold text-on-surface-variant uppercase tracking-wider text-right">
+                                            Notas Emitidas</th>
+                                        <th
+                                            class="px-6 py-4 font-semibold text-on-surface-variant uppercase tracking-wider text-right">
+                                            Faturamento Acumulado</th>
+                                        <th
+                                            class="px-6 py-4 font-semibold text-on-surface-variant uppercase tracking-wider text-center w-36">
+                                            Ações de Exportação</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-border/40" id="faturamento-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Company details grid (expanders filled by JS) -->
+                    <div>
+                        <h4 class="font-bold text-title-md text-on-surface mb-3 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-primary">zoom_in</span>
+                            Detalhamento Técnico por Empresa
+                        </h4>
+                        <div class="space-y-3" id="faturamento-detalhes-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. AGENDAMENTOS VIEW -->
+            <div id="view-agendamentos" class="spa-view hidden">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <!-- Config Scheduler Card -->
+                    <div
+                        class="md:col-span-5 bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-title-lg text-primary mb-2 flex items-center gap-2">
+                                <span class="material-symbols-outlined">alarm</span>
+                                Automação do Agendador
+                            </h3>
+                            <p class="text-xs text-on-surface-variant mb-6">Programe sincronizações diárias automáticas
+                                da Receita Federal.</p>
+
+                            <!-- Live status banner -->
+                            <div id="sched-status-banner"
+                                class="mb-6 p-4 rounded-xl border flex items-start gap-3 shadow-xs">
+                                <span id="sched-status-icon" class="material-symbols-outlined text-3xl"></span>
+                                <div class="flex-1">
+                                    <h4 class="text-xs font-bold text-on-surface" id="sched-status-title">Carregando
+                                        status...</h4>
+                                    <p class="text-[10px] text-on-surface-variant mt-0.5" id="sched-status-desc"></p>
+                                </div>
+                            </div>
+
+                            <!-- Parameters Form -->
+                            <div class="space-y-4">
+                                <div>
+                                    <label
+                                        class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Modo
+                                        de Agendamento</label>
+                                    <div class="flex bg-surface-container rounded-xl p-1 border border-border/40">
+                                        <button onclick="setSchedulerMode('intervalo')" id="btn-sched-mode-int"
+                                            class="flex-1 py-2 text-xs font-semibold rounded-lg bg-surface text-primary shadow-xs transition-all">Por
+                                            Intervalo</button>
+                                        <button onclick="setSchedulerMode('horario_fixo')" id="btn-sched-mode-fix"
+                                            class="flex-1 py-2 text-xs font-semibold rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all">Horário
+                                            Fixo</button>
+                                    </div>
+                                </div>
+
+                                <div id="sched-interval-field">
+                                    <label class="block text-label-md font-label-md text-on-surface-variant mb-1">Horas
+                                        entre Execuções</label>
+                                    <input type="number" id="sched-interval" min="1" max="72" value="6"
+                                        class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary text-body-md">
+                                    <p class="text-[10px] text-on-surface-variant mt-1 font-medium">Recomendado: 6 horas
+                                        para garantir NSUs sequenciais.</p>
+                                </div>
+
+                                <div id="sched-time-field" class="hidden">
+                                    <label
+                                        class="block text-label-md font-label-md text-on-surface-variant mb-1">Horário
+                                        de Execução Diária</label>
+                                    <input type="time" id="sched-time" value="08:00"
+                                        class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary text-body-md">
+                                    <p class="text-[10px] text-on-surface-variant mt-1 font-medium">O servidor executará
+                                        todos os dias neste horário exato.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 pt-4 border-t border-border/60 space-y-3">
+                            <button id="btn-sched-toggle" onclick="toggleScheduler()"
+                                class="w-full h-12 rounded-full font-bold text-label-lg flex items-center justify-center gap-2 active:scale-95 shadow-xs transition-all"></button>
+                            <button id="btn-sched-manual" onclick="triggerManualScheduler()"
+                                class="w-full h-12 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold text-label-lg flex items-center justify-center gap-2 hover:bg-primary/20 transition-all">
+                                <span class="material-symbols-outlined text-[20px]">rocket_launch</span>
+                                Rodar Sincronização Agora
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sync History Log Card -->
+                    <div
+                        class="md:col-span-7 bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-title-md text-on-surface mb-2 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">history</span>
+                                Histórico de Execuções Automáticas
+                            </h3>
+                            <p class="text-xs text-on-surface-variant mb-4">Registro cronológico de downloads em lote
+                                disparados pelo agendador.</p>
+                        </div>
+
+                        <div
+                            class="overflow-auto flex-1 custom-scrollbar max-h-[360px] border border-border/60 rounded-xl">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-surface-container-low border-b border-border/60">
+                                        <th
+                                            class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider w-24">
+                                            Data/Hora</th>
+                                        <th
+                                            class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider">
+                                            Empresa</th>
+                                        <th
+                                            class="px-3 py-3 font-semibold text-on-surface-variant uppercase tracking-wider w-20">
+                                            Novas</th>
+                                        <th
+                                            class="px-3 py-3 font-semibold text-on-surface-variant uppercase tracking-wider w-20">
+                                            Status</th>
+                                        <th
+                                            class="px-3 py-3 font-semibold text-on-surface-variant uppercase tracking-wider w-16">
+                                            Erros</th>
+                                        <th
+                                            class="px-3 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center w-16">
+                                            Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-border/40" id="scheduler-history-body">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-20 text-on-surface-variant">Carregando
+                                            logs do histórico...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. CONFIG & BACKUP VIEW -->
+            <div id="view-config" class="spa-view hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Backup Card -->
+                    <div
+                        class="bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between min-h-[380px]">
+                        <div>
+                            <h3 class="font-bold text-title-lg text-primary mb-2 flex items-center gap-2">
+                                <span class="material-symbols-outlined">backup</span>
+                                Copias de Segurança (Backups)
+                            </h3>
+                            <p class="text-xs text-on-surface-variant mb-6">Crie pacotes ZIP compactando a base SQLite e
+                                todos os XMLs físicos de notas.</p>
+
+                            <div class="flex gap-2 mb-6">
+                                <button onclick="triggerCreateBackup()"
+                                    class="flex-1 h-11 bg-primary text-on-primary rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 hover:opacity-90 transition-all shadow-xs">
+                                    <span class="material-symbols-outlined text-[18px]">add_task</span>
+                                    Criar Backup Agora
+                                </button>
+                                <div class="relative flex-1">
+                                    <input type="file" id="backup-file-input" accept=".zip"
+                                        class="absolute inset-0 opacity-0 cursor-pointer"
+                                        onchange="triggerUploadBackup(event)">
+                                    <button
+                                        class="w-full h-11 bg-primary/10 text-primary border border-primary/20 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all">
+                                        <span class="material-symbols-outlined text-[18px]">upload</span>
+                                        Enviar Arquivo (.zip)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <h4 class="font-bold text-xs text-on-surface-variant uppercase tracking-wider mb-2">Backups
+                                Locais no Servidor</h4>
+                            <div class="overflow-y-auto max-h-[160px] custom-scrollbar space-y-2 pr-1"
+                                id="config-backups-list">
+                                <p class="text-xs text-on-surface-variant text-center py-6">Nenhum backup local
+                                    encontrado.</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-border/60 text-[10px] text-on-surface-variant">
+                            ⚠️ A restauração de um backup irá sobrescrever seus dados atuais. O sistema cria um arquivo
+                            <code>.db.bak</code> preventivo antes de sobrescrever.
+                        </div>
+                    </div>
+
+                    <!-- API Test & Diagnostics Card -->
+                    <div
+                        class="bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between min-h-[380px]">
+                        <div>
+                            <h3 class="font-bold text-title-lg text-primary mb-2 flex items-center gap-2">
+                                <span class="material-symbols-outlined">cable</span>
+                                Testador de Conexão com API
+                            </h3>
+                            <p class="text-xs text-on-surface-variant mb-6">Instancie credenciais e execute chamadas
+                                experimentais no endpoint da Receita Federal.</p>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Escolha a
+                                        Empresa para o Teste</label>
+                                    <select id="test-empresa-select"
+                                        class="w-full h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary text-body-md"></select>
+                                </div>
+                                <button onclick="triggerAPITest()"
+                                    class="w-full h-12 bg-primary text-on-primary rounded-full font-bold text-xs flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-all">
+                                    <span class="material-symbols-outlined text-[20px]">play_circle</span>
+                                    Disparar Teste Conexão /DFe/0
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Test Results Console -->
+                        <div class="mt-6 flex-1 bg-neutral-900 rounded-xl p-4 font-mono text-[10px] text-neutral-300 overflow-y-auto h-[120px] custom-scrollbar border border-neutral-800"
+                            id="test-console">
+                            <p class="text-neutral-500">// Resultados dos testes aparecerão aqui...</p>
+                        </div>
+                    </div>
+
+                    <!-- Custom XML Directory & Auto-Updater Card -->
+                    <div
+                        class="col-span-full bg-surface border border-border/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between mt-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Left: XML output folder setting -->
+                            <div class="space-y-4">
+                                <h3 class="font-bold text-title-lg text-primary flex items-center gap-2">
+                                    <span class="material-symbols-outlined">folder_open</span>
+                                    Destino dos XMLs Baixados
+                                </h3>
+                                <p class="text-xs text-on-surface-variant">Defina a pasta do computador onde os arquivos
+                                    XML de NFS-e serão gravados organizadamente.</p>
+
+                                <div class="space-y-3">
+                                    <div>
+                                        <label
+                                            class="block text-label-md font-label-md text-on-surface-variant mb-1">Caminho
+                                            da Pasta Destino</label>
+                                        <div class="flex gap-2">
+                                            <input type="text" id="config-xmls-dir-input"
+                                                placeholder="Ex: C:\Users\Nome\Desktop\XMLs Baixados"
+                                                class="flex-1 h-11 px-3 rounded-lg border border-border bg-surface-container-lowest focus:border-primary text-body-md">
+                                            <button onclick="salvarConfigXmlsDir()"
+                                                class="px-5 bg-primary text-on-primary rounded-lg font-bold text-xs hover:opacity-90 active:scale-95 transition-all shadow-xs">
+                                                Salvar
+                                            </button>
+                                        </div>
+                                        <p class="text-[10px] text-on-surface-variant mt-1.5 font-medium">Deixe em
+                                            branco para usar a pasta padrão local (<code>xmls/</code>) do programa.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Auto-Updater system settings -->
+                            <div
+                                class="space-y-4 border-t md:border-t-0 md:border-l border-border/60 pt-6 md:pt-0 md:pl-8">
+                                <h3 class="font-bold text-title-lg text-primary flex items-center gap-2">
+                                    <span class="material-symbols-outlined">system_update_alt</span>
+                                    Atualizações do Sistema
+                                </h3>
+                                <p class="text-xs text-on-surface-variant">Verifique a existência de atualizações
+                                    estáveis na nuvem e instale novas versões com apenas 1 clique.</p>
+
+                                <div class="space-y-4 pt-2">
+                                    <div
+                                        class="flex items-center justify-between p-3.5 bg-surface-container rounded-xl border border-border/40">
+                                        <div>
+                                            <span class="text-xs font-semibold text-on-surface-variant block">Versão
+                                                Atual do Sistema</span>
+                                            <span class="text-sm font-bold text-on-surface mt-0.5 block">v1.0
+                                                (Estável)</span>
+                                        </div>
+                                        <button onclick="checarAtualizacaoSistema()" id="btn-checar-update"
+                                            class="h-10 px-4 bg-primary/10 text-primary border border-primary/20 rounded-lg font-bold text-xs hover:bg-primary/20 transition-all flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[16px]">sync</span>
+                                            Procurar Atualizações
+                                        </button>
+                                    </div>
+
+                                    <!-- Dynamic Updater Info Box (Hidden by default) -->
+                                    <div id="updater-info-box"
+                                        class="p-4 rounded-xl border border-success/20 bg-success/5 flex flex-col gap-2.5 hidden">
+                                        <div class="flex items-start gap-3">
+                                            <span
+                                                class="material-symbols-outlined text-success text-2xl">check_circle</span>
+                                            <div class="flex-1">
+                                                <h4 class="text-xs font-bold text-success" id="updater-info-title">Nova
+                                                    Versão Disponível!</h4>
+                                                <p class="text-[10px] text-on-surface-variant mt-0.5"
+                                                    id="updater-info-desc">Versão remota v1.1.0 disponível para
+                                                    download.</p>
+                                            </div>
+                                        </div>
+                                        <div class="p-2.5 bg-surface rounded-lg border border-border/40 text-[10px] text-on-surface-variant max-h-[80px] overflow-y-auto"
+                                            id="updater-notes-box"></div>
+                                        <button onclick="executarAtualizacaoSistema()" id="btn-executar-update"
+                                            class="w-full h-10 bg-success text-on-primary rounded-lg font-bold text-xs hover:opacity-90 active:scale-95 transition-all shadow-xs flex items-center justify-center gap-1.5">
+                                            <span
+                                                class="material-symbols-outlined text-[18px]">download_for_offline</span>
+                                            Atualizar e Reiniciar Agora
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav
+        class="fixed bottom-0 left-0 right-0 h-16 bg-surface border-t border-border md:hidden flex justify-around items-center z-30 shadow-lg">
+        <button onclick="switchView('dashboard')" id="mob-nav-dashboard" class="mobile-nav-item active">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span>Painel</span>
+        </button>
+        <button onclick="switchView('empresas')" id="mob-nav-empresas" class="mobile-nav-item">
+            <span class="material-symbols-outlined">business</span>
+            <span>Empresas</span>
+        </button>
+        <button onclick="switchView('downloads')" id="mob-nav-downloads" class="mobile-nav-item">
+            <span class="material-symbols-outlined">cloud_download</span>
+            <span>Downloads</span>
+        </button>
+        <button onclick="switchView('notas')" id="mob-nav-notas" class="mobile-nav-item">
+            <span class="material-symbols-outlined">receipt_long</span>
+            <span>Notas</span>
+        </button>
+        <button onclick="switchView('faturamento')" id="mob-nav-faturamento" class="mobile-nav-item">
+            <span class="material-symbols-outlined">payments</span>
+            <span>Simples</span>
+        </button>
+    </nav>
+
+    <!-- 8. MODAL: CADASTRAR/EDITAR EMPRESA -->
+    <div id="cadastro-modal" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div
+                class="px-6 py-4 border-b border-border/60 flex justify-between items-center bg-surface-bright rounded-t-2xl">
+                <h3 class="font-bold text-title-lg text-primary flex items-center gap-1.5" id="cadastro-modal-title">
+                    <span class="material-symbols-outlined">business</span>
+                    <span>Nova Empresa</span>
+                </h3>
+                <button onclick="closeCadastroModal()"
+                    class="p-1 hover:bg-surface-container rounded-full text-on-surface-variant transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <form id="cadastro-form" onsubmit="submitCadastroForm(event)" class="p-6 space-y-4">
+                <input type="hidden" id="cadastro-empresa-id">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1">CNPJ (Apenas
+                            números)</label>
+                        <input type="text" id="cadastro-cnpj" name="cnpj" required maxlength="14"
+                            placeholder="12345678000190"
+                            class="w-full h-10 px-3 text-xs border border-border rounded-lg focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1">Razão Social</label>
+                        <input type="text" id="cadastro-razao-social" name="razao_social" required
+                            placeholder="Minha Empresa Ltda"
+                            class="w-full h-10 px-3 text-xs border border-border rounded-lg focus:border-primary">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant mb-1">Nome Fantasia (Opcional)</label>
+                    <input type="text" id="cadastro-nome-fantasia" name="nome_fantasia" placeholder="Nome Comercial"
+                        class="w-full h-10 px-3 text-xs border border-border rounded-lg focus:border-primary">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1"
+                            id="label-cadastro-certificado">Certificado Digital (.pfx A1)</label>
+                        <input type="file" id="cadastro-certificado" name="certificado" accept=".pfx"
+                            class="w-full text-xs text-on-surface-variant border border-border rounded-lg h-10 bg-surface-container-lowest file:h-full file:bg-surface-container file:border-0 file:px-4 file:mr-3 file:text-xs file:font-semibold cursor-pointer">
+                        <p class="text-[9px] text-on-surface-variant mt-1" id="cadastro-cert-edit-msg"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1">Senha do Certificado</label>
+                        <input type="password" id="cadastro-senha" name="certificado_senha" placeholder="******"
+                            class="w-full h-10 px-3 text-xs border border-border rounded-lg focus:border-primary">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2" id="cadastro-ativo-container">
+                    <input type="checkbox" id="cadastro-ativo" name="ativo" checked
+                        class="h-4.5 w-4.5 text-primary border-border rounded">
+                    <label for="cadastro-ativo" class="text-xs text-on-surface select-none font-semibold">Empresa Ativa
+                        (Habilita downloads e consultas automáticas)</label>
+                </div>
+
+                <div class="pt-4 border-t border-border/60 flex justify-end gap-2.5">
+                    <button type="button" onclick="closeCadastroModal()"
+                        class="px-5 h-10 border border-border hover:bg-surface-container rounded-full font-semibold text-xs transition-all">Cancelar</button>
+                    <button type="submit"
+                        class="px-6 h-10 bg-primary text-on-primary rounded-full font-bold text-xs hover:opacity-90 transition-all shadow-xs">Salvar
+                        Empresa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 9. MODAL: PREVIEW XML/PDF VIEWER -->
+    <div id="preview-modal" class="modal-backdrop hidden">
+        <div class="modal-card max-w-4xl h-[85vh] flex flex-col justify-between">
+            <div
+                class="px-6 py-4 border-b border-border/60 flex justify-between items-center bg-surface-bright rounded-t-2xl">
+                <h3 class="font-bold text-title-lg text-primary flex items-center gap-1.5">
+                    <span class="material-symbols-outlined">find_in_page</span>
+                    <span>Visualizador de NFS-e</span>
+                </h3>
+                <button onclick="closePreviewModal()"
+                    class="p-1 hover:bg-surface-container rounded-full text-on-surface-variant transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="flex-1 bg-surface-container p-1.5 flex flex-col overflow-hidden relative">
+                <!-- Tabs XML / PDF -->
+                <div class="flex gap-1.5 px-3 py-2 bg-surface border-b border-border/40">
+                    <button id="btn-preview-pdf" onclick="setPreviewTab('pdf')"
+                        class="h-8 px-4 rounded-md text-xs font-bold bg-primary/10 text-primary transition-all">DANFSE
+                        (PDF)</button>
+                    <button id="btn-preview-xml" onclick="setPreviewTab('xml')"
+                        class="h-8 px-4 rounded-md text-xs font-bold text-on-surface-variant hover:bg-surface-container-high transition-all">XML
+                        Estruturado</button>
+                </div>
+
+                <div class="flex-1 overflow-hidden flex flex-col">
+                    <!-- PDF Preview Frame -->
+                    <iframe id="preview-pdf-iframe" class="w-full h-full border-0 hidden" src=""></iframe>
+                    <!-- XML Content Console -->
+                    <pre id="preview-xml-console"
+                        class="w-full h-full font-mono text-[10px] p-4 bg-neutral-900 text-neutral-300 overflow-auto custom-scrollbar hidden"></pre>
+                </div>
+            </div>
+
+            <div class="px-6 py-3.5 border-t border-border/60 flex justify-end gap-2.5 rounded-b-2xl bg-surface-bright">
+                <button onclick="downloadPreviewFile('xml')"
+                    class="px-5 h-10 border border-border hover:bg-surface-container rounded-full font-semibold text-xs flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px]">download</span>
+                    Baixar XML
+                </button>
+                <button onclick="downloadPreviewFile('pdf')"
+                    class="px-5 h-10 bg-primary text-on-primary rounded-full font-bold text-xs hover:opacity-90 flex items-center gap-1 shadow-xs">
+                    <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                    Imprimir PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPA Application Core -->
+    <script src="/static/app.js?v=1.0.5"></script>
+</body>
+
+</html>

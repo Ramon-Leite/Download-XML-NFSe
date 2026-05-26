@@ -1,0 +1,625 @@
+/* ==========================================================================
+   CSS CUSTOMIZADO E COMPLEMENTAR - PORTAL NFS-E (MATERIAL DESIGN 3)
+   ========================================================================== */
+
+/* 1. CONFIGURAÇÕES GERAIS E TIPOGRAFIA */
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f8f9fa;
+    color: #191c1d;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* 2. TRANSIÇÕES E ANIMAÇÕES PARA A SPA */
+.spa-view {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.spa-view.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 3. SIDEBAR - ESTILO DOS BOTÕES NAV-ITEM (M3 PILLS) */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #414754; /* on-surface-variant */
+    padding: 0.75rem 1.5rem;
+    margin: 0.125rem 0.75rem;
+    border-radius: 9999px; /* full pill */
+    font-size: 0.875rem; /* label-lg */
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+    outline: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.nav-item span.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    transition: font-variation-settings 0.2s ease;
+}
+
+.nav-item:hover {
+    background-color: #e7e8e9; /* surface-container-high */
+    color: #191c1d;
+}
+
+/* Active Pill - Material 3 specification */
+.nav-item.active {
+    background-color: #dde0e6; /* secondary-container */
+    color: #005bbf; /* primary */
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.nav-item.active span.material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+    color: #005bbf;
+}
+
+/* Mobile Nav Items */
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #414754;
+    font-size: 0.625rem;
+    font-weight: 500;
+    gap: 0.125rem;
+    width: 20%;
+    height: 100%;
+    transition: all 0.2s ease;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.mobile-nav-item span {
+    font-size: 1.5rem;
+    padding: 2px 12px;
+    border-radius: 9999px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-nav-item.active {
+    color: #005bbf;
+    font-weight: 700;
+}
+
+.mobile-nav-item.active span {
+    background-color: #dde0e6;
+    font-variation-settings: 'FILL' 1, 'wght' 600;
+}
+
+/* 4. MODAIS PREMIUM COM BACKDROP BLUR (GLASSMORPHISM) */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background-color: rgba(25, 28, 29, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.modal-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-card {
+    background-color: #ffffff;
+    border-radius: 1.5rem; /* xl/2xl rounded */
+    border: 1px solid rgba(218, 220, 224, 0.6);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+    width: 100%;
+    max-width: 32rem; /* 512px */
+    transform: scale(0.95);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-backdrop.active .modal-card {
+    transform: scale(1);
+}
+
+/* 5. TOAST ALERTS DESLIZANTES */
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: #ffffff;
+    border-radius: 1rem;
+    padding: 0.875rem 1.25rem;
+    border: 1px solid #DADCE0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
+    min-width: 20rem;
+    max-width: 26rem;
+    pointer-events: auto;
+    animation: toast-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transition: all 0.3s ease;
+}
+
+@keyframes toast-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(120%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+.toast.removing {
+    opacity: 0;
+    transform: translateX(50%) scale(0.85);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: -8px;
+    overflow: hidden;
+}
+
+/* Variações de cores dos Toasts */
+.toast-success {
+    border-left: 4px solid #1E8E3E;
+}
+.toast-success span.icon { color: #1E8E3E; }
+
+.toast-error {
+    border-left: 4px solid #D93025;
+}
+.toast-error span.icon { color: #D93025; }
+
+.toast-warning {
+    border-left: 4px solid #F9AB00;
+}
+.toast-warning span.icon { color: #F9AB00; }
+
+.toast-info {
+    border-left: 4px solid #005bbf;
+}
+.toast-info span.icon { color: #005bbf; }
+
+/* 6. TERMINAL DE LOGS PREMIUM (ESTILO HACKER NEON CLARO/ESCURO) */
+#dl-terminal, #test-console {
+    background-color: #0d0f12 !important;
+    border: 1px solid #1a1e24 !important;
+    color: #e2e8f0;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+    position: relative;
+}
+
+#dl-terminal::before, #test-console::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+    background-size: 100% 4px, 6px 100%;
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+/* Log Levels */
+.log-line {
+    padding: 2px 0;
+    line-height: 1.4;
+    word-break: break-all;
+    position: relative;
+    z-index: 2;
+}
+
+.log-info { color: #38bdf8; }
+.log-success { color: #4ade80; }
+.log-warning { color: #fbbf24; }
+.log-error { color: #f87171; font-weight: 600; }
+.log-debug { color: #94a3b8; opacity: 0.8; }
+.log-system { color: #c084fc; font-style: italic; }
+
+/* Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #c1c6d6; /* outline-variant */
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #727785;
+}
+
+/* Terminal scrollbar track override */
+#dl-terminal.custom-scrollbar::-webkit-scrollbar-track, 
+#test-console.custom-scrollbar::-webkit-scrollbar-track {
+    background: #11141a;
+}
+#dl-terminal.custom-scrollbar::-webkit-scrollbar-thumb, 
+#test-console.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #2e3542;
+}
+
+/* 7. DETALHAMENTO DE NOTAS FISCAIS / XML PREVIEW */
+pre#preview-xml-console {
+    background-color: #0d0f12;
+    color: #e2e8f0;
+}
+
+/* 8. MICRO INTERAÇÕES & HOVER EFEITOS */
+.table-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    background: #ffffff;
+}
+
+.table-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.table-action-btn:active {
+    transform: translateY(0);
+}
+
+/* Cards Bento */
+.bento-card {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.bento-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+/* Estilo do ranking */
+.ranking-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background-color: #f3f4f5;
+    border: 1px solid rgba(218, 220, 224, 0.4);
+    transition: all 0.2s ease;
+}
+
+.ranking-item:hover {
+    background-color: #edeeef;
+    transform: translateX(2px);
+}
+
+/* ==========================================================================
+   9. ESTILOS DE TEMA ESCURO (MATERIAL DESIGN 3 DARK)
+   ========================================================================== */
+.dark body {
+    background-color: #000000;
+    color: #e2e8f0;
+}
+
+/* Sidebar & Navigation in Dark Mode */
+.dark aside {
+    background-color: #000000 !important;
+    border-right-color: #1c1e26 !important;
+}
+
+.dark .nav-item {
+    color: #94a3b8;
+}
+
+.dark .nav-item:hover {
+    background-color: #1c1e26;
+    color: #f8fafc;
+}
+
+.dark .nav-item.active {
+    background-color: #1a73e8;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dark .nav-item.active span.material-symbols-outlined {
+    color: #ffffff;
+}
+
+/* Mobile Bottom Nav in Dark Mode */
+.dark nav {
+    background-color: #000000 !important;
+    border-top-color: #1c1e26 !important;
+}
+
+.dark .mobile-nav-item {
+    color: #94a3b8;
+}
+
+.dark .mobile-nav-item.active {
+    color: #38bdf8;
+}
+
+.dark .mobile-nav-item.active span {
+    background-color: #1c1e26;
+    color: #38bdf8;
+}
+
+/* Top Header in Dark Mode */
+.dark header {
+    background-color: #000000 !important;
+    border-bottom-color: #1c1e26 !important;
+}
+
+/* Cards & Bento Grid elements in Dark Mode */
+.dark .bg-surface {
+    background-color: #0c0d12 !important;
+    border-color: #1c1e26 !important;
+}
+
+.dark .border-border {
+    border-color: #1c1e26 !important;
+}
+
+.dark .text-on-surface {
+    color: #e2e8f0 !important;
+}
+
+.dark .text-on-surface-variant {
+    color: #94a3b8 !important;
+}
+
+.dark .bg-surface-container {
+    background-color: #08090c !important;
+}
+
+.dark .bg-surface-container-low {
+    background-color: #000000 !important;
+}
+
+.dark .bg-surface-container-high {
+    background-color: #121318 !important;
+}
+
+.dark .bg-surface-container-lowest {
+    background-color: #000000 !important;
+}
+
+.dark .bg-surface-bright {
+    background-color: #16171d !important;
+}
+
+.dark .border-border\/60 {
+    border-color: rgba(28, 30, 38, 0.6) !important;
+}
+
+.dark .border-border\/40 {
+    border-color: rgba(28, 30, 38, 0.4) !important;
+}
+
+.dark .border-border\/30 {
+    border-color: rgba(28, 30, 38, 0.3) !important;
+}
+
+.dark .border-border\/20 {
+    border-color: rgba(28, 30, 38, 0.2) !important;
+}
+
+/* Modals in Dark Mode */
+.dark .modal-card {
+    background-color: #0c0d12;
+    border-color: #1c1e26;
+    color: #e2e8f0;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .modal-card input, 
+.dark .modal-card select, 
+.dark .modal-card textarea {
+    background-color: #000000 !important;
+    border-color: #1c1e26 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .modal-card input:focus, 
+.dark .modal-card select:focus {
+    border-color: #1a73e8 !important;
+}
+
+/* Toasts in Dark Mode */
+.dark .toast {
+    background-color: #0c0d12;
+    border-color: #1c1e26;
+    color: #e2e8f0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.dark .toast div {
+    color: #e2e8f0 !important;
+}
+
+/* Ranking Items in Dark Mode */
+.dark .ranking-item {
+    background-color: #08090c;
+    border-color: rgba(28, 30, 38, 0.8);
+}
+
+.dark .ranking-item:hover {
+    background-color: #121318;
+}
+
+/* Table headers & dividers in Dark Mode */
+.dark table thead tr {
+    background-color: #08090c !important;
+}
+
+.dark table th {
+    color: #e2e8f0 !important;
+}
+
+.dark table td {
+    border-bottom-color: #1c1e26 !important;
+}
+
+.dark tr.hover\:bg-surface-container-low:hover {
+    background-color: #121318 !important;
+}
+
+.dark input[type="text"], 
+.dark select {
+    background-color: #08090c !important;
+    border-color: #1c1e26 !important;
+    color: #e2e8f0 !important;
+}
+
+/* Custom Scrollbars in Dark Mode */
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.01);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #1c1e26;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #313543;
+}
+
+/* ==========================================================================
+   4. SIDEBAR RETRÁTIL (COLLAPSIBLE SIDEBAR)
+   ========================================================================== */
+aside {
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+}
+
+main {
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed Sidebar State (Desktop only) */
+@media (min-width: 768px) {
+    .sidebar-collapsed aside {
+        width: 72px !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .sidebar-collapsed main {
+        margin-left: 72px !important;
+    }
+
+    /* Hide elements in collapsed state */
+    .sidebar-collapsed aside .sidebar-logo-text,
+    .sidebar-collapsed aside .nav-item span:not(.material-symbols-outlined),
+    .sidebar-collapsed aside .connection-card-full {
+        display: none !important;
+    }
+
+    /* Restructure Header */
+    .sidebar-collapsed aside .sidebar-header {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        justify-content: center !important;
+        margin-bottom: 1.5rem !important;
+    }
+
+    .sidebar-collapsed aside .sidebar-logo-area {
+        display: none !important;
+    }
+
+    /* Restructure Navigation Items to Circular Icons */
+    .sidebar-collapsed aside .nav-item {
+        padding: 0px !important;
+        margin: 0.25rem auto !important;
+        width: 48px !important;
+        height: 48px !important;
+        justify-content: center !important;
+        border-radius: 50% !important;
+    }
+
+    /* Pulsating Dot connection indicator in collapsed state */
+    .sidebar-collapsed aside .connection-card-collapsed {
+        display: flex !important;
+    }
+}
+
+/* ==========================================================================
+   5. CONTAINER DO CONTEÚDO PRINCIPAL (DYNAMICAL FLUID EXPANSION)
+   ========================================================================== */
+.main-content-container {
+    max-width: 100%;
+    transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 768px) {
+    .main-content-container {
+        max-width: 1360px;
+    }
+    
+    .sidebar-collapsed .main-content-container {
+        max-width: 1600px;
+    }
+}
+
+/* ==========================================================================
+   6. COLUNAS REDIMENSIONÁVEIS (RESIZABLE COLUMNS GUIDE)
+   ========================================================================== */
+th {
+    position: relative;
+}
+
+.resizer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    cursor: col-resize;
+    user-select: none;
+    z-index: 10;
+    transition: background 0.1s ease;
+    height: 100%;
+}
+
+.resizer:hover, .resizer.resizing {
+    background: rgba(0, 91, 191, 0.15);
+    border-right: 2px solid #005bbf;
+}
+
+
+/* Micro-animação para o Sino de Notificação (M3 Bell Wiggle) */
+@keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    15% { transform: rotate(15deg); }
+    30% { transform: rotate(-15deg); }
+    45% { transform: rotate(10deg); }
+    60% { transform: rotate(-10deg); }
+    75% { transform: rotate(5deg); }
+    90% { transform: rotate(-5deg); }
+}
+
+.animate-wiggle {
+    display: inline-block;
+    animation: wiggle 0.8s ease-in-out;
+}
+
+
+
