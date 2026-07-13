@@ -1104,8 +1104,12 @@ def checar_atualizacao():
     versao_local = "1.1"
     try:
         import requests
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
         url = config.GITHUB_UPDATE_URL
-        response = requests.get(url, timeout=2.0)
+        # Ignora verificação SSL para garantir compatibilidade com Python embutido/portátil no Windows
+        response = requests.get(url, timeout=3.0, verify=False)
         if response.ok:
             data = response.json()
             versao_remota = data.get("versao", "1.0")
@@ -1119,8 +1123,9 @@ def checar_atualizacao():
                 "notas_versao": data.get("notas_versao", ""),
                 "url_download": data.get("url_download", "")
             }
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar atualizacoes no GitHub: {str(e)}")
+        print(f"❌ Erro ao buscar atualizacoes no GitHub: {str(e)}")
         
     return {
         "success": True,
@@ -1149,8 +1154,8 @@ def executar_atualizacao(url_download: str = Form(...)):
         os.makedirs(temp_dir, exist_ok=True)
         zip_path = os.path.join(temp_dir, "update.zip")
         
-        # Download update zip
-        response = requests.get(url_download, timeout=20.0)
+        # Download update zip com verify=False para garantir portabilidade de SSL
+        response = requests.get(url_download, timeout=30.0, verify=False)
         if not response.ok:
             raise Exception("Falha ao efetuar download da atualização.")
             
