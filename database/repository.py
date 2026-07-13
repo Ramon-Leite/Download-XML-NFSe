@@ -170,26 +170,48 @@ class NFSeRepository:
         finally:
             conn.close()
     
-    def get_by_chave(self, chave_acesso: str) -> Optional[NFSe]:
-        """Busca NFS-e por chave de acesso"""
+    def get_by_chave(self, chave_acesso: str, empresa_id: Optional[int] = None) -> Optional[NFSe]:
+        """Busca NFS-e por chave de acesso (opcionalmente restrita a uma empresa)"""
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM nfse WHERE chave_acesso = ?", (chave_acesso,))
+            if empresa_id is not None:
+                cursor.execute(
+                    "SELECT * FROM nfse WHERE chave_acesso = ? AND empresa_id = ?",
+                    (chave_acesso, empresa_id)
+                )
+            else:
+                cursor.execute("SELECT * FROM nfse WHERE chave_acesso = ?", (chave_acesso,))
             row = cursor.fetchone()
-            
+
             if row:
                 return self._row_to_nfse(row)
             return None
         finally:
             conn.close()
-    
-    def exists_by_chave(self, chave_acesso: str) -> bool:
-        """Verifica se NFS-e já existe (otimizado com SELECT 1)"""
+
+    def get_all_by_chave(self, chave_acesso: str) -> List[NFSe]:
+        """Busca TODAS as NFS-e com a chave (a mesma nota pode existir para mais de uma empresa)"""
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT 1 FROM nfse WHERE chave_acesso = ? LIMIT 1", (chave_acesso,))
+            cursor.execute("SELECT * FROM nfse WHERE chave_acesso = ?", (chave_acesso,))
+            return [self._row_to_nfse(row) for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
+    def exists_by_chave(self, chave_acesso: str, empresa_id: Optional[int] = None) -> bool:
+        """Verifica se NFS-e já existe (otimizado com SELECT 1). Com empresa_id, restringe à empresa."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            if empresa_id is not None:
+                cursor.execute(
+                    "SELECT 1 FROM nfse WHERE chave_acesso = ? AND empresa_id = ? LIMIT 1",
+                    (chave_acesso, empresa_id)
+                )
+            else:
+                cursor.execute("SELECT 1 FROM nfse WHERE chave_acesso = ? LIMIT 1", (chave_acesso,))
             return cursor.fetchone() is not None
         finally:
             conn.close()
@@ -372,17 +394,86 @@ class NFSeRepository:
         )
 
 
-    def detectar_gaps_numeracao(self, empresa_id: int) -> dict:
+    def detectar_gaps_dps(self, empresa_id: int) -> List[dict]:
         """
-        Detecta gaps na numeração de NFS-e emitidas de uma empresa.
-        Retorna dict com: numeros_faltantes, primeiro_numero, ultimo_numero, total_notas
+        Detecta lacunas na numeração de DPS das notas EMITIDAS, por série.
+
+        Diferente da chave de acesso (que tem código aleatório), o id da DPS
+        é derivável — então lacunas de DPS podem ser buscadas ativamente na
+        SEFIN Nacional.
+
+        Considera TODOS os status (nota cancelada também ocupa número).
+        O código do município é extraído da chave de acesso das notas já
+        baixadas (7 primeiros dígitos da chave de 50 posições).
+
+        Returns:
+            Lista de dicts: {'serie', 'cmun', 'faltantes', 'primeiro', 'ultimo'}
         """
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT numero FROM nfse 
-                WHERE empresa_id = ? AND tipo = 'EMITIDA' AND status = 'NORMAL'
+                SELECT numero_dps, serie, chave_acesso FROM nfse
+                WHERE empresa_id = ? AND tipo = 'EMITIDA'
+                AND numero_dps IS NOT NULL
+            """, (empresa_id,))
+            rows = cursor.fetchall()
+        finally:
+            conn.close()
+
+        # Agrupar por série
+        series = {}
+        for row in rows:
+            try:
+                ndps = int(row['numero_dps'])
+            except (ValueError, TypeError):
+                continue
+
+            serie = (row['serie'] or '').strip() or '1'
+            grupo = series.setdefault(serie, {'numeros': set(), 'cmun': None})
+            grupo['numeros'].add(ndps)
+
+            # Extrair código do município da chave de acesso (50 dígitos)
+            chave = (row['chave_acesso'] or '').strip()
+            if grupo['cmun'] is None and len(chave) == 50 and chave.isdigit():
+                grupo['cmun'] = chave[:7]
+
+        resultado = []
+        for serie, grupo in series.items():
+            numeros = sorted(grupo['numeros'])
+            if len(numeros) < 2 or not grupo['cmun']:
+                continue
+
+            primeiro, ultimo = numeros[0], numeros[-1]
+            conjunto = grupo['numeros']
+            faltantes = [n for n in range(primeiro, ultimo + 1) if n not in conjunto]
+
+            if faltantes:
+                resultado.append({
+                    'serie': serie,
+                    'cmun': grupo['cmun'],
+                    'faltantes': faltantes,
+                    'primeiro': primeiro,
+                    'ultimo': ultimo
+                })
+
+        return resultado
+
+    def detectar_gaps_numeracao(self, empresa_id: int) -> dict:
+        """
+        Detecta gaps na numeração de NFS-e emitidas de uma empresa.
+        Retorna dict com: numeros_faltantes, primeiro_numero, ultimo_numero, total_notas
+
+        Considera TODOS os status: uma nota cancelada ou substituída existe e
+        ocupa o seu número — não é uma nota "faltante". Filtrar por status aqui
+        criaria falsos gaps no lugar dessas notas.
+        """
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT numero FROM nfse
+                WHERE empresa_id = ? AND tipo = 'EMITIDA'
                 AND numero IS NOT NULL
                 ORDER BY CAST(numero AS INTEGER)
             """, (empresa_id,))
@@ -514,6 +605,58 @@ class SchedulerConfigRepository:
                     "INSERT OR REPLACE INTO scheduler_config (key, value) VALUES (?, ?)",
                     (key, value)
                 )
+        finally:
+            conn.close()
+
+
+class EventoPendenteRepository:
+    """
+    Repositório para eventos (cancelamento/substituição) que chegaram na
+    distribuição ANTES da respectiva nota. Ficam guardados e são aplicados
+    assim que a nota correspondente for salva.
+    """
+
+    def __init__(self):
+        self.db_path = config.DATABASE_PATH
+
+    def _get_connection(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def add(self, chave_acesso: str, status: str) -> None:
+        """Registra um evento pendente (idempotente)"""
+        conn = self._get_connection()
+        try:
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT OR IGNORE INTO eventos_pendentes (chave_acesso, status) VALUES (?, ?)",
+                    (chave_acesso, status)
+                )
+        finally:
+            conn.close()
+
+    def get_by_chave(self, chave_acesso: str) -> List[str]:
+        """Retorna os status pendentes para uma chave (mais recente por último)"""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT status FROM eventos_pendentes WHERE chave_acesso = ? ORDER BY recebido_em, id",
+                (chave_acesso,)
+            )
+            return [row['status'] for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
+    def delete_by_chave(self, chave_acesso: str) -> None:
+        """Remove os eventos pendentes de uma chave (após aplicados)"""
+        conn = self._get_connection()
+        try:
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM eventos_pendentes WHERE chave_acesso = ?", (chave_acesso,))
         finally:
             conn.close()
 

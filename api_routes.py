@@ -500,9 +500,9 @@ def importar_xmls(
                 continue
             
             chave = parsed.get('chave_acesso')
-            if nfse_repo.exists_by_chave(chave):
+            if nfse_repo.exists_by_chave(chave, empresa_id=empresa_id):
                 stats['duplicadas'] += 1
-                stats['detalhes'].append(f"{file.filename}: Nota já existe no banco")
+                stats['detalhes'].append(f"{file.filename}: Nota já existe no banco para esta empresa")
                 continue
             
             prestador = (parsed.get('prestador_cnpj') or '').replace('.', '').replace('/', '').replace('-', '')
@@ -615,6 +615,23 @@ def listar_notas(
         },
         "gaps": gaps_info
     }
+
+
+@router.post("/notas/buscar-faltantes")
+def buscar_notas_faltantes(empresa_id: int = Form(...)):
+    """
+    Busca ativa de notas faltantes: consulta a SEFIN Nacional para cada
+    lacuna de numeração DPS das notas emitidas da empresa e recupera as
+    notas que existem lá mas não foram distribuídas/baixadas.
+    """
+    empresa_service = EmpresaService()
+    empresa = empresa_service.obter_empresa(empresa_id)
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+
+    download_service = DownloadService()
+    stats = download_service.buscar_notas_faltantes(empresa)
+    return stats
 
 
 @router.post("/notas/sincronizar")
@@ -1099,22 +1116,31 @@ def salvar_xmls_dir(xmls_dir: str = Form(...)):
     return {"success": True, "xmls_dir": xmls_dir}
 
 
+def _versao_tupla(v):
+    """Converte '1.2.3' em (1, 2, 3) para comparação numérica correta.
+    Evita a armadilha da comparação de texto, onde '1.10' < '1.9'."""
+    try:
+        return tuple(int(p) for p in str(v).strip().split("."))
+    except (ValueError, AttributeError):
+        return (0,)
+
+
 @router.get("/atualizador/checar")
 def checar_atualizacao():
-    versao_local = "1.1"
+    versao_local = "1.2"
     try:
         import requests
         import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        
+
         url = config.GITHUB_UPDATE_URL
         # Ignora verificação SSL para garantir compatibilidade com Python embutido/portátil no Windows
         response = requests.get(url, timeout=3.0, verify=False)
         if response.ok:
             data = response.json()
             versao_remota = data.get("versao", "1.0")
-            # Compara versões (simples comparação de string de versão estável)
-            update_disponivel = versao_remota > versao_local
+            # Compara versões numericamente (1.10 > 1.9)
+            update_disponivel = _versao_tupla(versao_remota) > _versao_tupla(versao_local)
             return {
                 "success": True,
                 "versao_local": versao_local,

@@ -1,21 +1,27 @@
-/* ==========================================================================
-   CSS CUSTOMIZADO E COMPLEMENTAR - PORTAL NFS-E (MATERIAL DESIGN 3)
-   ========================================================================== */
+/* ============================================================
+   IDENTIDADE "RAZÃO AZUL" — azul-marinho fiscal (irmão do
+   Integra Contador, que usa verde-petróleo).
+   Tokens de cor principais ficam no tailwind-config (index.html);
+   este arquivo cuida da sidebar, tema escuro e refinamentos.
+   ============================================================ */
 
-/* 1. CONFIGURAÇÕES GERAIS E TIPOGRAFIA */
 body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #f8f9fa;
-    color: #191c1d;
+    font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+    background-color: #f5f6f8;
+    color: #1b2530;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
 }
 
-/* 2. TRANSIÇÕES E ANIMAÇÕES PARA A SPA */
+/* Números de tabela sempre alinhados dígito sob dígito */
+table td, table th {
+    font-variant-numeric: tabular-nums;
+}
+
 .spa-view {
     display: none;
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
     transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -25,21 +31,45 @@ body {
     transform: translateY(0);
 }
 
-/* 3. SIDEBAR - ESTILO DOS BOTÕES NAV-ITEM (M3 PILLS) */
+/* ============================================================
+   SIDEBAR — azul-marinho profundo nos dois temas
+   ============================================================ */
+aside {
+    background-color: #14283d !important;
+    border-right: none !important;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+}
+
+aside .sidebar-logo-text h1 { color: #ffffff !important; }
+aside .sidebar-logo-text p { color: #8fa9be !important; }
+aside .sidebar-logo-area > .material-symbols-outlined { color: #4fa8dc !important; }
+aside #btn-toggle-sidebar { color: #8fa9be; }
+aside #btn-toggle-sidebar:hover { background-color: rgba(255, 255, 255, 0.08) !important; }
+
+.nav-group-label {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6e88a0;
+    padding: 1rem 1.5rem 0.25rem;
+}
+
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    color: #414754; /* on-surface-variant */
-    padding: 0.75rem 1.5rem;
+    gap: 0.9rem;
+    color: #cfdee9;
+    padding: 0.6rem 1.25rem;
     margin: 0.125rem 0.75rem;
-    border-radius: 9999px; /* full pill */
-    font-size: 0.875rem; /* label-lg */
+    border-radius: 0.5rem;
+    border-left: 3px solid transparent;
+    font-size: 0.875rem;
     font-weight: 500;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: left;
     outline: none;
-    border: none;
+    border-top: none; border-right: none; border-bottom: none;
     background: transparent;
     cursor: pointer;
 }
@@ -47,33 +77,50 @@ body {
 .nav-item span.material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     transition: font-variation-settings 0.2s ease;
+    font-size: 20px;
+    color: #8fa9be;
 }
 
 .nav-item:hover {
-    background-color: #e7e8e9; /* surface-container-high */
-    color: #191c1d;
+    background-color: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+}
+.nav-item:hover span.material-symbols-outlined { color: #cfdee9; }
+
+.nav-item:focus-visible {
+    outline: 2px solid #4fa8dc;
+    outline-offset: -2px;
 }
 
-/* Active Pill - Material 3 specification */
 .nav-item.active {
-    background-color: #dde0e6; /* secondary-container */
-    color: #005bbf; /* primary */
-    font-weight: 700;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    background-color: rgba(255, 255, 255, 0.10);
+    color: #ffffff;
+    font-weight: 600;
+    border-left-color: #4fa8dc;
 }
 
 .nav-item.active span.material-symbols-outlined {
-    font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
-    color: #005bbf;
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+    color: #4fa8dc;
 }
 
-/* Mobile Nav Items */
+/* Card de status da conexão dentro da sidebar escura */
+aside .connection-card-full {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.10) !important;
+}
+aside .connection-card-full .text-success { color: #4caf7d !important; }
+aside .connection-card-full .text-on-surface-variant { color: #8fa9be !important; }
+
+/* ============================================================
+   NAVEGAÇÃO MOBILE (barra inferior clara)
+   ============================================================ */
 .mobile-nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #414754;
+    color: #495a6b;
     font-size: 0.625rem;
     font-weight: 500;
     gap: 0.125rem;
@@ -86,28 +133,30 @@ body {
 }
 
 .mobile-nav-item span {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     padding: 2px 12px;
     border-radius: 9999px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .mobile-nav-item.active {
-    color: #005bbf;
+    color: #0e5a86;
     font-weight: 700;
 }
 
 .mobile-nav-item.active span {
-    background-color: #dde0e6;
+    background-color: #dce4ec;
     font-variation-settings: 'FILL' 1, 'wght' 600;
 }
 
-/* 4. MODAIS PREMIUM COM BACKDROP BLUR (GLASSMORPHISM) */
+/* ============================================================
+   MODAIS E TOASTS
+   ============================================================ */
 .modal-backdrop {
     position: fixed;
     inset: 0;
     z-index: 100;
-    background-color: rgba(25, 28, 29, 0.4);
+    background-color: rgba(20, 40, 61, 0.45);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     display: flex;
@@ -126,11 +175,11 @@ body {
 
 .modal-card {
     background-color: #ffffff;
-    border-radius: 1.5rem; /* xl/2xl rounded */
-    border: 1px solid rgba(218, 220, 224, 0.6);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+    border-radius: 1rem;
+    border: 1px solid rgba(225, 229, 234, 0.8);
+    box-shadow: 0 12px 32px rgba(20, 40, 61, 0.14), 0 2px 8px rgba(0, 0, 0, 0.04);
     width: 100%;
-    max-width: 32rem; /* 512px */
+    max-width: 32rem;
     transform: scale(0.95);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -139,16 +188,15 @@ body {
     transform: scale(1);
 }
 
-/* 5. TOAST ALERTS DESLIZANTES */
 .toast {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     background-color: #ffffff;
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     padding: 0.875rem 1.25rem;
-    border: 1px solid #DADCE0;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
+    border: 1px solid #e1e5ea;
+    box-shadow: 0 8px 24px rgba(20, 40, 61, 0.10), 0 2px 6px rgba(0, 0, 0, 0.03);
     min-width: 20rem;
     max-width: 26rem;
     pointer-events: auto;
@@ -167,6 +215,11 @@ body {
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .toast { animation: none; }
+    .spa-view, .nav-item, aside, main { transition: none; }
+}
+
 .toast.removing {
     opacity: 0;
     transform: translateX(50%) scale(0.85);
@@ -177,34 +230,28 @@ body {
     overflow: hidden;
 }
 
-/* Variações de cores dos Toasts */
-.toast-success {
-    border-left: 4px solid #1E8E3E;
-}
-.toast-success span.icon { color: #1E8E3E; }
+.toast-success { border-left: 4px solid #1e7a47; }
+.toast-success span.icon { color: #1e7a47; }
 
-.toast-error {
-    border-left: 4px solid #D93025;
-}
-.toast-error span.icon { color: #D93025; }
+.toast-error { border-left: 4px solid #b23a3a; }
+.toast-error span.icon { color: #b23a3a; }
 
-.toast-warning {
-    border-left: 4px solid #F9AB00;
-}
-.toast-warning span.icon { color: #F9AB00; }
+.toast-warning { border-left: 4px solid #b7791f; }
+.toast-warning span.icon { color: #b7791f; }
 
-.toast-info {
-    border-left: 4px solid #005bbf;
-}
-.toast-info span.icon { color: #005bbf; }
+.toast-info { border-left: 4px solid #0e5a86; }
+.toast-info span.icon { color: #0e5a86; }
 
-/* 6. TERMINAL DE LOGS PREMIUM (ESTILO HACKER NEON CLARO/ESCURO) */
-#dl-terminal, #test-console {
-    background-color: #0d0f12 !important;
-    border: 1px solid #1a1e24 !important;
-    color: #e2e8f0;
+/* ============================================================
+   TERMINAL / LOGS
+   ============================================================ */
+#dl-terminal, #test-console, pre#preview-xml-console {
+    background-color: #0a0f14 !important;
+    border: 1px solid #1c2733 !important;
+    color: #dce3e9;
     box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
     position: relative;
+    font-family: 'IBM Plex Mono', Consolas, monospace;
 }
 
 #dl-terminal::before, #test-console::before {
@@ -217,7 +264,6 @@ body {
     opacity: 0.4;
 }
 
-/* Log Levels */
 .log-line {
     padding: 2px 0;
     line-height: 1.4;
@@ -225,13 +271,12 @@ body {
     position: relative;
     z-index: 2;
 }
-
-.log-info { color: #38bdf8; }
-.log-success { color: #4ade80; }
-.log-warning { color: #fbbf24; }
-.log-error { color: #f87171; font-weight: 600; }
-.log-debug { color: #94a3b8; opacity: 0.8; }
-.log-system { color: #c084fc; font-style: italic; }
+.log-info { color: #55b6c2; }
+.log-success { color: #4caf7d; }
+.log-warning { color: #c9992f; }
+.log-error { color: #d4726f; font-weight: 600; }
+.log-debug { color: #94a0ab; opacity: 0.8; }
+.log-system { color: #b6a4dd; font-style: italic; }
 
 /* Custom Scrollbars */
 .custom-scrollbar::-webkit-scrollbar {
@@ -243,30 +288,32 @@ body {
     border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #c1c6d6; /* outline-variant */
+    background: #c3ccd5;
     border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #727785;
+    background: #7c8a98;
 }
 
-/* Terminal scrollbar track override */
-#dl-terminal.custom-scrollbar::-webkit-scrollbar-track, 
+/* Scrollbar dentro da sidebar escura */
+aside.custom-scrollbar::-webkit-scrollbar-thumb,
+aside .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+/* Scrollbar do terminal escuro */
+#dl-terminal.custom-scrollbar::-webkit-scrollbar-track,
 #test-console.custom-scrollbar::-webkit-scrollbar-track {
-    background: #11141a;
+    background: #0f151c;
 }
-#dl-terminal.custom-scrollbar::-webkit-scrollbar-thumb, 
+#dl-terminal.custom-scrollbar::-webkit-scrollbar-thumb,
 #test-console.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #2e3542;
+    background: #283440;
 }
 
-/* 7. DETALHAMENTO DE NOTAS FISCAIS / XML PREVIEW */
-pre#preview-xml-console {
-    background-color: #0d0f12;
-    color: #e2e8f0;
-}
-
-/* 8. MICRO INTERAÇÕES & HOVER EFEITOS */
+/* ============================================================
+   MICRO INTERAÇÕES & HOVER
+   ============================================================ */
 .table-action-btn {
     display: inline-flex;
     align-items: center;
@@ -280,21 +327,19 @@ pre#preview-xml-console {
 
 .table-action-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(20, 40, 61, 0.08);
 }
 
 .table-action-btn:active {
     transform: translateY(0);
 }
 
-/* Cards Bento */
 .bento-card {
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
-
 .bento-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    box-shadow: 0 8px 20px rgba(20, 40, 61, 0.08);
 }
 
 /* Estilo do ranking */
@@ -304,218 +349,194 @@ pre#preview-xml-console {
     justify-content: space-between;
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
-    background-color: #f3f4f5;
-    border: 1px solid rgba(218, 220, 224, 0.4);
+    background-color: #eff2f5;
+    border: 1px solid rgba(225, 229, 234, 0.6);
     transition: all 0.2s ease;
 }
 
 .ranking-item:hover {
-    background-color: #edeeef;
+    background-color: #e9edf1;
     transform: translateX(2px);
 }
 
-/* ==========================================================================
-   9. ESTILOS DE TEMA ESCURO (MATERIAL DESIGN 3 DARK)
-   ========================================================================== */
+/* ============================================================
+   TEMA ESCURO — azul-preto (redesenho, não inversão)
+   ============================================================ */
 .dark body {
-    background-color: #000000;
-    color: #e2e8f0;
+    background-color: #0f141a;
+    color: #e3e8ed;
 }
 
-/* Sidebar & Navigation in Dark Mode */
+/* Especificidade acima de ".dark .bg-surface": a sidebar mantém o marinho próprio no escuro */
+.dark aside.bg-surface,
 .dark aside {
-    background-color: #000000 !important;
-    border-right-color: #1c1e26 !important;
+    background-color: #0b1b2a !important;
 }
 
-.dark .nav-item {
-    color: #94a3b8;
+/* Barra de navegação inferior (mobile) — NÃO atinge o nav interno da sidebar */
+.dark nav:not(#desktop-nav) {
+    background-color: #0f141a !important;
+    border-top-color: #283440 !important;
 }
 
-.dark .nav-item:hover {
-    background-color: #1c1e26;
-    color: #f8fafc;
-}
-
-.dark .nav-item.active {
-    background-color: #1a73e8;
-    color: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.dark .nav-item.active span.material-symbols-outlined {
-    color: #ffffff;
-}
-
-/* Mobile Bottom Nav in Dark Mode */
-.dark nav {
-    background-color: #000000 !important;
-    border-top-color: #1c1e26 !important;
+/* O nav da sidebar herda o marinho do aside nos dois temas */
+#desktop-nav {
+    background-color: transparent !important;
 }
 
 .dark .mobile-nav-item {
-    color: #94a3b8;
+    color: #a7b4c0;
 }
 
 .dark .mobile-nav-item.active {
-    color: #38bdf8;
+    color: #4093cd;
+    background-color: transparent;
 }
 
 .dark .mobile-nav-item.active span {
-    background-color: #1c1e26;
-    color: #38bdf8;
+    background-color: #1c2733;
+    color: #4093cd;
 }
 
-/* Top Header in Dark Mode */
 .dark header {
-    background-color: #000000 !important;
-    border-bottom-color: #1c1e26 !important;
+    background-color: #16202a !important;
+    border-bottom-color: #283440 !important;
 }
 
-/* Cards & Bento Grid elements in Dark Mode */
 .dark .bg-surface {
-    background-color: #0c0d12 !important;
-    border-color: #1c1e26 !important;
+    background-color: #16202a !important;
+    border-color: #283440 !important;
 }
 
 .dark .border-border {
-    border-color: #1c1e26 !important;
+    border-color: #283440 !important;
 }
 
 .dark .text-on-surface {
-    color: #e2e8f0 !important;
+    color: #e3e8ed !important;
 }
 
 .dark .text-on-surface-variant {
-    color: #94a3b8 !important;
+    color: #a7b4c0 !important;
 }
 
 .dark .bg-surface-container {
-    background-color: #08090c !important;
+    background-color: #1c2733 !important;
 }
 
 .dark .bg-surface-container-low {
-    background-color: #000000 !important;
+    background-color: #121a22 !important;
 }
 
 .dark .bg-surface-container-high {
-    background-color: #121318 !important;
+    background-color: #222e3b !important;
 }
 
 .dark .bg-surface-container-lowest {
-    background-color: #000000 !important;
+    background-color: #0f141a !important;
 }
 
 .dark .bg-surface-bright {
-    background-color: #16171d !important;
+    background-color: #222e3b !important;
 }
 
 .dark .border-border\/60 {
-    border-color: rgba(28, 30, 38, 0.6) !important;
+    border-color: rgba(40, 52, 64, 0.6) !important;
 }
 
 .dark .border-border\/40 {
-    border-color: rgba(28, 30, 38, 0.4) !important;
+    border-color: rgba(40, 52, 64, 0.4) !important;
 }
 
 .dark .border-border\/30 {
-    border-color: rgba(28, 30, 38, 0.3) !important;
+    border-color: rgba(40, 52, 64, 0.3) !important;
 }
 
 .dark .border-border\/20 {
-    border-color: rgba(28, 30, 38, 0.2) !important;
+    border-color: rgba(40, 52, 64, 0.2) !important;
 }
 
-/* Modals in Dark Mode */
 .dark .modal-card {
-    background-color: #0c0d12;
-    border-color: #1c1e26;
-    color: #e2e8f0;
+    background-color: #16202a;
+    border-color: #283440;
+    color: #e3e8ed;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.dark .modal-card input, 
-.dark .modal-card select, 
+.dark .modal-card input,
+.dark .modal-card select,
 .dark .modal-card textarea {
-    background-color: #000000 !important;
-    border-color: #1c1e26 !important;
-    color: #e2e8f0 !important;
+    background-color: #0f141a !important;
+    border-color: #283440 !important;
+    color: #e3e8ed !important;
 }
 
-.dark .modal-card input:focus, 
+.dark .modal-card input:focus,
 .dark .modal-card select:focus {
-    border-color: #1a73e8 !important;
+    border-color: #4093cd !important;
 }
 
-/* Toasts in Dark Mode */
 .dark .toast {
-    background-color: #0c0d12;
-    border-color: #1c1e26;
-    color: #e2e8f0;
+    background-color: #16202a;
+    border-color: #283440;
+    color: #e3e8ed;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .dark .toast div {
-    color: #e2e8f0 !important;
+    color: #e3e8ed !important;
 }
 
-/* Ranking Items in Dark Mode */
 .dark .ranking-item {
-    background-color: #08090c;
-    border-color: rgba(28, 30, 38, 0.8);
+    background-color: #121a22;
+    border-color: rgba(40, 52, 64, 0.8);
 }
 
 .dark .ranking-item:hover {
-    background-color: #121318;
+    background-color: #1c2733;
 }
 
-/* Table headers & dividers in Dark Mode */
 .dark table thead tr {
-    background-color: #08090c !important;
+    background-color: #121a22 !important;
 }
 
 .dark table th {
-    color: #e2e8f0 !important;
+    color: #e3e8ed !important;
 }
 
 .dark table td {
-    border-bottom-color: #1c1e26 !important;
+    border-bottom-color: #283440 !important;
 }
 
 .dark tr.hover\:bg-surface-container-low:hover {
-    background-color: #121318 !important;
+    background-color: #1c2733 !important;
 }
 
-.dark input[type="text"], 
+.dark input[type="text"],
+.dark input[type="password"],
 .dark select {
-    background-color: #08090c !important;
-    border-color: #1c1e26 !important;
-    color: #e2e8f0 !important;
+    background-color: #121a22 !important;
+    border-color: #283440 !important;
+    color: #e3e8ed !important;
 }
 
-/* Custom Scrollbars in Dark Mode */
 .dark .custom-scrollbar::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.01);
 }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #1c1e26;
+    background: #283440;
 }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #313543;
+    background: #37485a;
 }
 
-/* ==========================================================================
-   4. SIDEBAR RETRÁTIL (COLLAPSIBLE SIDEBAR)
-   ========================================================================== */
-aside {
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
-}
-
+/* ============================================================
+   SIDEBAR RETRÁTIL (COLLAPSIBLE SIDEBAR)
+   ============================================================ */
 main {
     transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Collapsed Sidebar State (Desktop only) */
 @media (min-width: 768px) {
     .sidebar-collapsed aside {
         width: 72px !important;
@@ -527,14 +548,13 @@ main {
         margin-left: 72px !important;
     }
 
-    /* Hide elements in collapsed state */
     .sidebar-collapsed aside .sidebar-logo-text,
+    .sidebar-collapsed aside .nav-group-label,
     .sidebar-collapsed aside .nav-item span:not(.material-symbols-outlined),
     .sidebar-collapsed aside .connection-card-full {
         display: none !important;
     }
 
-    /* Restructure Header */
     .sidebar-collapsed aside .sidebar-header {
         padding-left: 0 !important;
         padding-right: 0 !important;
@@ -546,25 +566,24 @@ main {
         display: none !important;
     }
 
-    /* Restructure Navigation Items to Circular Icons */
     .sidebar-collapsed aside .nav-item {
         padding: 0px !important;
         margin: 0.25rem auto !important;
-        width: 48px !important;
-        height: 48px !important;
+        width: 44px !important;
+        height: 44px !important;
         justify-content: center !important;
-        border-radius: 50% !important;
+        border-radius: 0.625rem !important;
+        border-left: none !important;
     }
 
-    /* Pulsating Dot connection indicator in collapsed state */
     .sidebar-collapsed aside .connection-card-collapsed {
         display: flex !important;
     }
 }
 
-/* ==========================================================================
-   5. CONTAINER DO CONTEÚDO PRINCIPAL (DYNAMICAL FLUID EXPANSION)
-   ========================================================================== */
+/* ============================================================
+   CONTAINER DO CONTEÚDO PRINCIPAL
+   ============================================================ */
 .main-content-container {
     max-width: 100%;
     transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -574,15 +593,15 @@ main {
     .main-content-container {
         max-width: 1360px;
     }
-    
+
     .sidebar-collapsed .main-content-container {
         max-width: 1600px;
     }
 }
 
-/* ==========================================================================
-   6. COLUNAS REDIMENSIONÁVEIS (RESIZABLE COLUMNS GUIDE)
-   ========================================================================== */
+/* ============================================================
+   COLUNAS REDIMENSIONÁVEIS
+   ============================================================ */
 th {
     position: relative;
 }
@@ -600,12 +619,11 @@ th {
 }
 
 .resizer:hover, .resizer.resizing {
-    background: rgba(0, 91, 191, 0.15);
-    border-right: 2px solid #005bbf;
+    background: rgba(14, 90, 134, 0.15);
+    border-right: 2px solid #0e5a86;
 }
 
-
-/* Micro-animação para o Sino de Notificação (M3 Bell Wiggle) */
+/* ANIMAÇÃO DE SINO (Notificação) */
 @keyframes wiggle {
     0%, 100% { transform: rotate(0deg); }
     15% { transform: rotate(15deg); }
@@ -620,6 +638,3 @@ th {
     display: inline-block;
     animation: wiggle 0.8s ease-in-out;
 }
-
-
-

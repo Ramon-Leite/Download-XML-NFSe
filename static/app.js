@@ -74,10 +74,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Preencher datas padrão (mês atual)
+    // Preencher datas padrão (mês atual) — usar componentes locais para
+    // evitar o deslocamento de fuso que toISOString() (UTC) pode causar
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-    const lastDay = today.toISOString().split('T')[0];
+    const firstDay = toLocalYMD(new Date(today.getFullYear(), today.getMonth(), 1));
+    const lastDay = toLocalYMD(today);
     
     if (document.getElementById("dl-date-inicio")) document.getElementById("dl-date-inicio").value = firstDay;
     if (document.getElementById("dl-date-fim")) document.getElementById("dl-date-fim").value = lastDay;
@@ -238,6 +239,11 @@ function toggleTheme() {
         if (themeIcon) themeIcon.innerText = "light_mode";
         showToast("Tema Escuro ativado!", "info");
     }
+
+    // Re-renderiza o gráfico com a paleta do tema atual
+    if (AppState.faturamentoChart) {
+        renderFaturamentoChart(AppState.faturamentoChartData || []);
+    }
 }
 
 // Dispara o carregamento sob demanda ao trocar de tela
@@ -316,10 +322,23 @@ function formatCurrency(valor) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
 }
 
+// Formata um objeto Date usando os componentes LOCAIS (AAAA-MM-DD),
+// sem passar por toISOString() — que converte para UTC e pode deslocar o dia.
+function toLocalYMD(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 function formatShortDate(dateStr) {
     if (!dateStr) return "N/A";
     try {
-        const d = new Date(dateStr);
+        // Datas puras AAAA-MM-DD do backend: formatar direto, sem new Date(),
+        // que as interpreta como meia-noite UTC e mostra -1 dia no Brasil.
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr);
+        if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+        const d = new Date(dateStr);           // fallback para outros formatos
         if (isNaN(d.getTime())) return dateStr;
         return d.toLocaleDateString('pt-BR');
     } catch {
@@ -1041,6 +1060,58 @@ async function refreshNotasTable(page = 1) {
     }
 }
 
+// Busca ativa de notas faltantes: consulta a SEFIN Nacional pelas DPS
+// ausentes na sequência de numeração e recupera as notas existentes
+async function buscarNotasFaltantes() {
+    const select = document.getElementById("filter-notas-empresa");
+    const empresaId = select ? select.value : null;
+
+    if (!empresaId || empresaId === "todas") {
+        showToast("Selecione uma empresa específica no filtro para buscar faltantes.", "warning");
+        return;
+    }
+
+    const btn = document.getElementById("btn-buscar-faltantes");
+    const btnHtmlOriginal = btn ? btn.innerHTML : null;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> Consultando SEFIN...`;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append("empresa_id", empresaId);
+
+        const response = await fetch("/api/notas/buscar-faltantes", {
+            method: "POST",
+            body: formData
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Falha na busca ativa");
+
+        if (data.recuperadas > 0) {
+            showToast(`✅ ${data.recuperadas} nota(s) recuperada(s)! ${data.sem_nfse} lacuna(s) legítima(s) em ${data.consultadas} consulta(s).`, "success");
+        } else if (data.consultadas > 0) {
+            showToast(`Nenhuma nota recuperada: ${data.sem_nfse} de ${data.consultadas} lacuna(s) consultada(s) nunca viraram NFS-e.`, "info");
+        } else {
+            showToast("Nenhuma lacuna de numeração DPS para consultar.", "info");
+        }
+
+        if (data.erros > 0) {
+            showToast(`${data.erros} consulta(s) com erro — veja os logs do servidor.`, "warning");
+        }
+
+        refreshNotasTable(1);
+    } catch (e) {
+        showToast(`Erro na busca ativa: ${e.message}`, "error");
+    } finally {
+        if (btn && btnHtmlOriginal) {
+            btn.disabled = false;
+            btn.innerHTML = btnHtmlOriginal;
+        }
+    }
+}
+
 function renderNotasTable() {
     let filtered = [...AppState.allNotas];
 
@@ -1492,6 +1563,8 @@ function renderFaturamentoChart(historico) {
     const ctx = document.getElementById('faturamentoChart');
     if (!ctx) return;
 
+    AppState.faturamentoChartData = historico;
+
     if (AppState.faturamentoChart) {
         AppState.faturamentoChart.destroy();
     }
@@ -1506,6 +1579,12 @@ function renderFaturamentoChart(historico) {
     const labels = historico.map(h => h.mes || "");
     const valores = historico.map(h => h.valor || 0);
 
+    // Paleta de gráficos validada para daltonismo/contraste (identidade "Razão Azul")
+    const isDark = document.documentElement.classList.contains('dark');
+    const serie1 = isDark ? '#4093CD' : '#1668A0';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(27, 37, 48, 0.05)';
+    const axisColor = isDark ? '#A7B4C0' : '#495A6B';
+
     AppState.faturamentoChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -1513,9 +1592,9 @@ function renderFaturamentoChart(historico) {
             datasets: [{
                 label: 'Faturamento Mensal Emitido (Competência)',
                 data: valores,
-                backgroundColor: '#1a73e8', // Google Blue
+                backgroundColor: serie1,
                 borderRadius: 8,
-                hoverBackgroundColor: '#005bbf'
+                hoverBackgroundColor: isDark ? '#55A3D6' : '#15679A'
             }]
         },
         options: {
@@ -1531,13 +1610,14 @@ function renderFaturamentoChart(historico) {
                         callback: function(value) {
                             return 'R$ ' + value.toLocaleString('pt-BR');
                         },
-                        font: { size: 10 }
+                        font: { size: 10 },
+                        color: axisColor
                     },
-                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                    grid: { color: gridColor }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { font: { size: 10 } }
+                    ticks: { font: { size: 10 }, color: axisColor }
                 }
             }
         }

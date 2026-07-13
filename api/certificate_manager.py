@@ -61,9 +61,12 @@ class CertificateManager:
         cert_path = self.temp_dir / cert_filename
         key_path = self.temp_dir / key_filename
         
-        # Salvar certificado em formato PEM
+        # Salvar certificado em formato PEM, incluindo a cadeia (intermediárias).
+        # Alguns endpoints (ex.: SEFIN Nacional) exigem a cadeia completa no mTLS.
         with open(cert_path, 'wb') as f:
             f.write(certificate.public_bytes(Encoding.PEM))
+            for ca_cert in (additional_certs or []):
+                f.write(ca_cert.public_bytes(Encoding.PEM))
         
         # Salvar chave privada em formato PEM
         with open(key_path, 'wb') as f:

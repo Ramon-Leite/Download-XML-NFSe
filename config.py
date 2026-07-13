@@ -26,14 +26,23 @@ DATABASE_PATH = DATA_DIR / "nfse.db"
 API_BASE_URL_PRODUCAO = "https://adn.nfse.gov.br"
 API_BASE_URL_HOMOLOGACAO = "https://adn.producaorestrita.nfse.gov.br"
 
+# SEFIN Nacional (emissor nacional): consultas individuais de NFS-e/DPS
+SEFIN_BASE_URL_PRODUCAO = "https://sefin.nfse.gov.br/sefinnacional"
+SEFIN_BASE_URL_HOMOLOGACAO = "https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional"
+
 # Ambiente: pode ser configurado via variável de ambiente NFSE_ENV (production/homologacao)
 USE_PRODUCTION = os.getenv("NFSE_ENV", "production").lower() == "production"
 API_BASE_URL = API_BASE_URL_PRODUCAO if USE_PRODUCTION else API_BASE_URL_HOMOLOGACAO
+SEFIN_BASE_URL = SEFIN_BASE_URL_PRODUCAO if USE_PRODUCTION else SEFIN_BASE_URL_HOMOLOGACAO
 
 # Timeouts e retry (configuráveis via variáveis de ambiente)
 REQUEST_TIMEOUT = int(os.getenv("NFSE_TIMEOUT", "30"))  # segundos
 MAX_RETRIES = int(os.getenv("NFSE_MAX_RETRIES", "3"))
 RETRY_DELAY = 2  # segundos
+
+# Máximo de esperas por rate limit (429) numa mesma requisição.
+# Backoff exponencial: 4s, 8s, 16s, 32s, 60s, 60s (+ jitter)
+MAX_RATE_LIMIT_WAITS = int(os.getenv("NFSE_MAX_429_WAITS", "6"))
 
 # Buffer de contingência NSU: volta N posições para capturar documentos atrasados
 NSU_BUFFER = int(os.getenv("NFSE_NSU_BUFFER", "100"))

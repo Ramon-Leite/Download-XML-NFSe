@@ -9,7 +9,10 @@ from typing import List, Optional
 from datetime import date, datetime
 from pathlib import Path
 import os
-from database import Empresa, NFSe, NFSeRepository, EmpresaRepository, SchedulerConfigRepository
+from database import (
+    Empresa, NFSe, NFSeRepository, EmpresaRepository,
+    SchedulerConfigRepository, EventoPendenteRepository
+)
 from api import CertificateManager, XMLParser, NFSeClient
 import config
 
@@ -18,175 +21,355 @@ logger = logging.getLogger(__name__)
 
 class DownloadService:
     """Serviço para orquestrar download de NFS-e via NSU"""
-    
+
     def __init__(self):
         self.nfse_repository = NFSeRepository()
         self.empresa_repository = EmpresaRepository()
+        self.evento_pendente_repository = EventoPendenteRepository()
         self.cert_manager = CertificateManager()
         self.xml_parser = XMLParser()
-    
+
     def download_nfse(self, empresa: Empresa, tipo: str, data_inicio: date, data_fim: date,
                      tipo_periodo: str = 'emissao', callback=None) -> dict:
         """
-        Faz download de NFS-e de uma empresa usando sistema de NSU
-        
-        Args:
-            empresa: Objeto Empresa
-            tipo: 'EMITIDA', 'RECEBIDA' ou 'AMBAS' (usado para filtrar após download)
-            data_inicio: Data inicial do período (usado para filtrar após download)
-            data_fim: Data final do período (usado para filtrar após download)
-            tipo_periodo: 'emissao' ou 'competencia' (usado para filtrar após download)
-            callback: Função de callback para progresso (opcional)
-        
+        Sincroniza TODOS os documentos disponíveis na distribuição da empresa.
+
+        IMPORTANTE: o download é uma SINCRONIZAÇÃO — toda nota recebida é
+        salva, independentemente de tipo/período. Os parâmetros tipo,
+        data_inicio, data_fim e tipo_periodo servem apenas para informar
+        nas estatísticas quantas notas novas caíram fora do período pedido.
+        (Antes, notas fora do filtro eram descartadas com o ponteiro NSU
+        avançando — a causa das "notas sumidas".)
+
+        O ponteiro ultimo_nsu só avança até o último documento processado
+        com sucesso: uma falha transitória segura o ponteiro e o documento
+        é reprocessado na próxima execução.
+
         Returns:
             Dicionário com estatísticas do download
         """
         stats = {
             'total_encontradas': 0,
             'novas': 0,
+            'novas_fora_periodo': 0,
             'duplicadas': 0,
             'erros': 0,
             'detalhes_erros': []
         }
-        
+
         try:
             if callback:
                 callback("Convertendo certificado...")
-            
+
             # Converter certificado
             cert_path, key_path = self.cert_manager.convert_pfx_to_pem(
                 empresa.certificado_path,
                 empresa.certificado_senha
             )
-            
+
             # Criar cliente API
             with NFSeClient(cert_path, key_path) as client:
-                # Aplicar buffer de contingência no NSU para capturar documentos atrasados
-                nsu_com_buffer = max(0, empresa.ultimo_nsu - config.NSU_BUFFER)
-                
+                # Buffer de contingência: refaz os últimos N NSUs (deduplicados adiante)
+                nsu_inicio = max(0, empresa.ultimo_nsu - config.NSU_BUFFER)
+
                 if callback:
                     if empresa.ultimo_nsu == 0:
-                        callback("🔍 Descobrindo automaticamente onde estão os documentos...")
+                        callback("📥 Buscando todos os documentos da distribuição (NSU 0)...")
                     else:
-                        callback(f"📥 Buscando documentos desde NSU {nsu_com_buffer} (buffer de {config.NSU_BUFFER})...")
-                
-                # Buscar documentos desde o NSU com buffer
-                # Se nsu_com_buffer for 0, o sistema fará descoberta automática
-                documentos = client.buscar_documentos_desde_nsu(
-                    nsu_inicial=nsu_com_buffer,
-                    cnpj=empresa.cnpj,
-                    max_documentos=500
-                )
-                
-                stats['total_encontradas'] = len(documentos)
-                
-                if len(documentos) == 0:
+                        callback(f"📥 Buscando documentos desde NSU {nsu_inicio} (buffer de {config.NSU_BUFFER})...")
+
+                ponteiro = empresa.ultimo_nsu
+                falha_ocorreu = False
+                docs_processados = 0
+
+                for lote in client.iterar_lotes_dfe(nsu_inicio):
+                    stats['total_encontradas'] += len(lote)
+
+                    for doc in lote:
+                        doc_nsu = doc.get('NSU') or 0
+
+                        ok = self._processar_documento(
+                            client, doc, empresa, tipo, data_inicio, data_fim, tipo_periodo, stats
+                        )
+
+                        if not ok:
+                            # Segura o ponteiro: este documento (e os seguintes)
+                            # serão re-baixados na próxima execução
+                            falha_ocorreu = True
+                        elif not falha_ocorreu and doc_nsu > ponteiro:
+                            ponteiro = doc_nsu
+
+                        docs_processados += 1
+                        if callback and docs_processados % 10 == 0:
+                            callback(f"Processando... {docs_processados} documentos ({stats['novas']} novas)")
+
+                    # Persistir progresso a cada lote (crash no meio não perde o avanço)
+                    if ponteiro > empresa.ultimo_nsu:
+                        empresa.ultimo_nsu = ponteiro
+                        self.empresa_repository.update(empresa)
+
+                if stats['total_encontradas'] == 0:
                     if callback:
-                        callback("✅ Conexão com API estabelecida, mas nenhum documento encontrado para este CNPJ.")
-                    logger.info("Nenhum documento encontrado - isso é normal se a empresa ainda não emitiu NFS-e no padrão Nacional")
-                else:
-                    if callback:
-                        callback(f"Encontrados {len(documentos)} documentos. Processando...")
-                
-                # Processar cada documento
-                maior_nsu = empresa.ultimo_nsu
-                
-                for i, doc in enumerate(documentos):
-                    if callback and i % 10 == 0:
-                        callback(f"Processando documento {i+1}/{len(documentos)}...")
-                    
-                    try:
-                        # Atualizar maior NSU
-                        doc_nsu = doc.get('NSU')
-                        if doc_nsu and doc_nsu > maior_nsu:
-                            maior_nsu = doc_nsu
-                        
-                        # Processar apenas NFS-e e EVENTO
-                        tipo_doc = doc.get('TipoDocumento', '')
-                        if tipo_doc.upper() not in ('NFSE', 'EVENTO'):
-                            continue
-                        
-                        # Extrair XML
-                        xml_content = client.extrair_xml_documento(doc)
-                        if not xml_content:
-                            logger.warning(f"Não foi possível extrair XML do documento NSU {doc_nsu}")
-                            continue
-                        
-                        # Parsear XML
-                        parsed_data = self.xml_parser.parse_nfse(xml_content)
-                        if not parsed_data:
-                            logger.warning(f"Erro ao parsear XML do NSU {doc_nsu}")
-                            continue
-                        
-                        # TRATAMENTO DE EVENTO (Cancelamento/Substituição)
-                        if parsed_data.get('is_evento'):
-                            self._processar_evento(parsed_data, doc_nsu)
-                            continue # Evento processado, vai pro próximo NSU.
-                        
-                        
-                        logger.info(f"Dados parseados (NSU {doc_nsu}): Prestador={parsed_data.get('prestador_cnpj')}, Data={parsed_data.get('data_emissao')}")
-                        
-                        # Verificar se está no período desejado
-                        data_emissao = parsed_data.get('data_emissao')
-                        data_competencia = parsed_data.get('data_competencia')
-                        
-                        data_filtro = data_emissao if tipo_periodo == 'emissao' else data_competencia
-                        
-                        if data_filtro:
-                            if data_filtro < data_inicio or data_filtro > data_fim:
-                                continue  # Fora do período
-                        
-                        # Determinar tipo (emitida ou recebida)
-                        prestador_cnpj = (parsed_data.get('prestador_cnpj') or '').replace('.', '').replace('/', '').replace('-', '')
-                        tomador_cnpj = (parsed_data.get('tomador_cnpj') or '').replace('.', '').replace('/', '').replace('-', '')
-                        
-                        if prestador_cnpj == empresa.cnpj:
-                            tipo_nfse = 'EMITIDA'
-                        elif tomador_cnpj == empresa.cnpj:
-                            tipo_nfse = 'RECEBIDA'
-                        else:
-                            continue  # Não é da empresa
-                        
-                        # Verificar duplicata
-                        chave_acesso = parsed_data.get('chave_acesso')
-                        if self.nfse_repository.exists_by_chave(chave_acesso):
-                            # Conta como duplicada apenas se é do tipo que o usuário pediu
-                            if tipo == 'AMBAS' or tipo == tipo_nfse:
-                                stats['duplicadas'] += 1
-                            continue
-                        
-                        # Processa e salva a NFS-e
-                        self._processar_nfse(parsed_data, empresa, tipo_nfse, xml_content)
-                        
-                        # Contabilizar apenas as do tipo solicitado pelo usuário
-                        if tipo == 'AMBAS' or tipo == tipo_nfse:
-                            stats['novas'] += 1
-                        
-                        logger.info(f"NFS-e salva: {chave_acesso} ({tipo_nfse})")
-                    
-                    except Exception as e:
-                        stats['erros'] += 1
-                        stats['detalhes_erros'].append(f"NSU {doc.get('NSU')}: {str(e)}")
-                        logger.error(f"Erro ao processar documento: {str(e)}\n{traceback.format_exc()}")
-                
-                # Atualizar último NSU da empresa
-                if maior_nsu > empresa.ultimo_nsu:
-                    empresa.ultimo_nsu = maior_nsu
-                    self.empresa_repository.update(empresa)
-                    logger.info(f"Último NSU atualizado para: {maior_nsu}")
-            
-            # Limpar arquivos temporários
-            self.cert_manager.cleanup_temp_files(empresa.cnpj)
-            
+                        callback("✅ Conexão com API estabelecida, mas nenhum documento novo para este CNPJ.")
+                    logger.info("Nenhum documento novo - normal se a empresa ainda não emitiu NFS-e no padrão Nacional")
+
+                if falha_ocorreu:
+                    logger.warning(
+                        f"Falhas transitórias durante o download: ponteiro NSU mantido em {empresa.ultimo_nsu}; "
+                        "os documentos com falha serão reprocessados na próxima execução"
+                    )
+
             logger.info(f"Download concluído: {stats}")
             return stats
-        
+
         except Exception as e:
             logger.error(f"Erro no download: {str(e)}")
             stats['erros'] += 1
             stats['detalhes_erros'].append(str(e))
             return stats
+
+        finally:
+            # Sempre remover os PEMs temporários (contêm a chave privada)
+            try:
+                self.cert_manager.cleanup_temp_files(empresa.cnpj)
+            except Exception as e:
+                logger.warning(f"Falha ao limpar arquivos temporários de certificado: {e}")
+
+    def _processar_documento(self, client: NFSeClient, doc: dict, empresa: Empresa,
+                             tipo: str, data_inicio: date, data_fim: date,
+                             tipo_periodo: str, stats: dict) -> bool:
+        """
+        Processa um documento da distribuição.
+
+        Returns:
+            True  — documento tratado (salvo, duplicado, irrelevante ou
+                    preservado em quarentena): o ponteiro NSU pode avançar.
+            False — falha possivelmente transitória (banco/disco): o ponteiro
+                    NSU é segurado para reprocessar na próxima execução.
+        """
+        doc_nsu = doc.get('NSU')
+
+        try:
+            # Processar apenas NFS-e e EVENTO
+            tipo_doc = (doc.get('TipoDocumento') or '').upper()
+            if tipo_doc not in ('NFSE', 'EVENTO'):
+                return True
+
+            # Extrair XML
+            xml_content = client.extrair_xml_documento(doc)
+            if not xml_content:
+                # Conteúdo ilegível (base64/gzip): preservar o bruto e seguir
+                stats['erros'] += 1
+                stats['detalhes_erros'].append(f"NSU {doc_nsu}: XML não pôde ser extraído (bruto em quarentena)")
+                self._salvar_quarentena(empresa, doc.get('ArquivoXml') or '', doc_nsu, 'extracao', extensao='b64')
+                return True
+
+            # Parsear XML
+            parsed_data = self.xml_parser.parse_nfse(xml_content)
+            if not parsed_data:
+                # XML não reconhecido: preservar em quarentena e seguir
+                stats['erros'] += 1
+                stats['detalhes_erros'].append(f"NSU {doc_nsu}: erro de parse (XML em quarentena)")
+                self._salvar_quarentena(empresa, xml_content, doc_nsu, 'parse')
+                return True
+
+            # TRATAMENTO DE EVENTO (Cancelamento/Substituição)
+            if parsed_data.get('is_evento'):
+                self._processar_evento(parsed_data, doc_nsu)
+                return True
+
+            # Determinar tipo (emitida ou recebida)
+            prestador_cnpj = (parsed_data.get('prestador_cnpj') or '').replace('.', '').replace('/', '').replace('-', '')
+            tomador_cnpj = (parsed_data.get('tomador_cnpj') or '').replace('.', '').replace('/', '').replace('-', '')
+
+            if prestador_cnpj == empresa.cnpj:
+                tipo_nfse = 'EMITIDA'
+            elif tomador_cnpj == empresa.cnpj:
+                tipo_nfse = 'RECEBIDA'
+            else:
+                # A distribuição entrega notas em que a empresa é parte
+                # (ex.: intermediária) ou o layout não permitiu extrair o CNPJ.
+                # Preservar em quarentena para não perder o documento.
+                logger.warning(
+                    f"NSU {doc_nsu}: empresa {empresa.cnpj} não é prestador nem tomador "
+                    f"(prestador={prestador_cnpj or '?'}, tomador={tomador_cnpj or '?'}) — XML em quarentena"
+                )
+                self._salvar_quarentena(empresa, xml_content, doc_nsu, 'sem_vinculo')
+                return True
+
+            chave_acesso = parsed_data.get('chave_acesso')
+            if not chave_acesso:
+                stats['erros'] += 1
+                stats['detalhes_erros'].append(f"NSU {doc_nsu}: nota sem chave de acesso (XML em quarentena)")
+                self._salvar_quarentena(empresa, xml_content, doc_nsu, 'sem_chave')
+                return True
+
+            # Verificar duplicata (por empresa: a mesma nota pode existir
+            # para a prestadora e para a tomadora, se ambas cadastradas)
+            if self.nfse_repository.exists_by_chave(chave_acesso, empresa_id=empresa.id):
+                stats['duplicadas'] += 1
+                return True
+
+            # Salvar SEMPRE, independente de tipo/período solicitados
+            self._processar_nfse(parsed_data, empresa, tipo_nfse, xml_content)
+            stats['novas'] += 1
+
+            # Estatística informativa: nota fora do período pedido pelo usuário
+            data_filtro = parsed_data.get('data_emissao') if tipo_periodo == 'emissao' \
+                else parsed_data.get('data_competencia')
+            if data_filtro and (data_filtro < data_inicio or data_filtro > data_fim):
+                stats['novas_fora_periodo'] += 1
+
+            logger.info(f"NFS-e salva: {chave_acesso} ({tipo_nfse})")
+            return True
+
+        except Exception as e:
+            # Falha possivelmente transitória (banco travado, disco cheio...):
+            # segurar o ponteiro para reprocessar este NSU na próxima execução
+            stats['erros'] += 1
+            stats['detalhes_erros'].append(f"NSU {doc_nsu}: {str(e)}")
+            logger.error(f"Erro ao processar documento NSU {doc_nsu}: {str(e)}\n{traceback.format_exc()}")
+            return False
             
+    @staticmethod
+    def montar_id_dps(cmun: str, cnpj: str, serie: str, numero_dps: int) -> str:
+        """
+        Monta o id derivável da DPS:
+        DPS + cMun(7) + tpInsc(1: 2=CNPJ) + inscrição(14) + série(5) + nDPS(15)
+        """
+        serie_digitos = ''.join(c for c in str(serie) if c.isdigit()) or '0'
+        return f"DPS{cmun}2{cnpj.zfill(14)}{serie_digitos.zfill(5)}{int(numero_dps):015d}"
+
+    def buscar_notas_faltantes(self, empresa: Empresa, callback=None, max_consultas: int = 50) -> dict:
+        """
+        Busca ativa de notas faltantes: para cada lacuna na numeração de DPS
+        das notas emitidas, consulta a SEFIN Nacional (GET /dps/{id} → chave
+        de acesso → GET /nfse/{chave} → XML) e salva a nota recuperada.
+
+        Lacunas legítimas (DPS que nunca virou NFS-e) são contabilizadas em
+        'sem_nfse' e não são erro.
+
+        Args:
+            empresa: Empresa cujas lacunas serão verificadas
+            max_consultas: Máximo de DPS consultadas por execução
+
+        Returns:
+            Estatísticas da recuperação
+        """
+        stats = {
+            'faltantes_detectadas': 0,
+            'consultadas': 0,
+            'recuperadas': 0,
+            'sem_nfse': 0,
+            'erros': 0,
+            'detalhes': []
+        }
+
+        gaps = self.nfse_repository.detectar_gaps_dps(empresa.id)
+        stats['faltantes_detectadas'] = sum(len(g['faltantes']) for g in gaps)
+
+        if not gaps:
+            if callback:
+                callback("✅ Nenhuma lacuna de numeração DPS detectada.")
+            return stats
+
+        try:
+            if callback:
+                callback("Convertendo certificado...")
+
+            cert_path, key_path = self.cert_manager.convert_pfx_to_pem(
+                empresa.certificado_path,
+                empresa.certificado_senha
+            )
+
+            with NFSeClient(cert_path, key_path) as client:
+                for gap in gaps:
+                    faltantes = gap['faltantes']
+
+                    # Proteção contra falso gap gigante (ex.: reinício de numeração)
+                    if len(faltantes) > 1000:
+                        stats['detalhes'].append(
+                            f"Série {gap['serie']}: {len(faltantes)} lacunas — provável salto de "
+                            "numeração, série ignorada"
+                        )
+                        logger.warning(f"Série {gap['serie']} com {len(faltantes)} lacunas — ignorada")
+                        continue
+
+                    for ndps in faltantes:
+                        if stats['consultadas'] >= max_consultas:
+                            stats['detalhes'].append(
+                                f"Limite de {max_consultas} consultas atingido — execute novamente "
+                                "para continuar"
+                            )
+                            return stats
+
+                        if callback:
+                            callback(f"Consultando DPS {ndps} (série {gap['serie']})...")
+
+                        id_dps = self.montar_id_dps(gap['cmun'], empresa.cnpj, gap['serie'], ndps)
+                        chave = client.consultar_chave_por_dps(id_dps)
+                        stats['consultadas'] += 1
+
+                        if not chave:
+                            # DPS nunca virou NFS-e: lacuna legítima
+                            stats['sem_nfse'] += 1
+                            time.sleep(0.4)
+                            continue
+
+                        if self.nfse_repository.exists_by_chave(chave, empresa_id=empresa.id):
+                            stats['detalhes'].append(f"DPS {ndps}: nota {chave} já estava no banco")
+                            time.sleep(0.4)
+                            continue
+
+                        xml_content = client.consultar_nfse_por_chave(chave)
+                        if not xml_content:
+                            stats['erros'] += 1
+                            stats['detalhes'].append(f"DPS {ndps}: chave {chave} localizada, mas XML indisponível")
+                            time.sleep(0.4)
+                            continue
+
+                        parsed_data = self.xml_parser.parse_nfse(xml_content)
+                        if not parsed_data or parsed_data.get('is_evento'):
+                            stats['erros'] += 1
+                            stats['detalhes'].append(f"DPS {ndps}: XML recuperado não pôde ser processado (em quarentena)")
+                            self._salvar_quarentena(empresa, xml_content, f"dps_{ndps}", 'recuperacao')
+                            time.sleep(0.4)
+                            continue
+
+                        prestador_cnpj = (parsed_data.get('prestador_cnpj') or '').replace('.', '').replace('/', '').replace('-', '')
+                        if prestador_cnpj != empresa.cnpj:
+                            stats['erros'] += 1
+                            stats['detalhes'].append(f"DPS {ndps}: prestador do XML não confere (em quarentena)")
+                            self._salvar_quarentena(empresa, xml_content, f"dps_{ndps}", 'prestador_divergente')
+                            time.sleep(0.4)
+                            continue
+
+                        self._processar_nfse(parsed_data, empresa, 'EMITIDA', xml_content)
+                        stats['recuperadas'] += 1
+                        stats['detalhes'].append(
+                            f"✅ Nota nº {parsed_data.get('numero')} (DPS {ndps}) recuperada"
+                        )
+                        logger.info(f"Nota faltante recuperada via DPS {ndps}: {chave}")
+
+                        if callback:
+                            callback(f"✅ Recuperada nota nº {parsed_data.get('numero')} (DPS {ndps})")
+
+                        time.sleep(0.4)
+
+            return stats
+
+        except Exception as e:
+            logger.error(f"Erro na busca de notas faltantes: {str(e)}\n{traceback.format_exc()}")
+            stats['erros'] += 1
+            stats['detalhes'].append(str(e))
+            return stats
+
+        finally:
+            try:
+                self.cert_manager.cleanup_temp_files(empresa.cnpj)
+            except Exception as e:
+                logger.warning(f"Falha ao limpar arquivos temporários de certificado: {e}")
+
     def sincronizar_status_notas(self, nfses: List[NFSe], empresa: Empresa, callback=None) -> dict:
         """
         Consulta ativamente os eventos de um grupo de notas e atualiza no banco caso cancelada/substituída.
@@ -244,28 +427,64 @@ class DownloadService:
                         stats['erros'] += 1
                         logger.error(f"Erro ao sincronizar chave {nfse.chave_acesso}: {e}")
                     
-                    # Respeitar rate limit da API (aumentado para evitar 429 em listas grandes)
-                    time.sleep(3)
-            
-            self.cert_manager.cleanup_temp_files(empresa.cnpj)
-            
+                    # Pausa preventiva entre consultas; o cliente já faz
+                    # backoff exponencial automático se levar 429
+                    time.sleep(1)
+
             return stats
-            
+
         except Exception as e:
             logger.error(f"Erro geral ao sincronizar status: {e}")
             stats['erros'] += 1
             return stats
+
+        finally:
+            # Sempre remover os PEMs temporários (contêm a chave privada)
+            try:
+                self.cert_manager.cleanup_temp_files(empresa.cnpj)
+            except Exception as e:
+                logger.warning(f"Falha ao limpar arquivos temporários de certificado: {e}")
                 
+    def _base_xmls_dir(self) -> Path:
+        """Diretório base dos XMLs (customizável nas configurações)"""
+        try:
+            config_repo = SchedulerConfigRepository()
+            custom_dir = config_repo.get("xmls_dir")
+            if custom_dir and os.path.exists(custom_dir):
+                return Path(custom_dir)
+        except Exception:
+            pass
+        return config.XMLS_DIR
+
+    def _salvar_quarentena(self, empresa: Empresa, conteudo: str, doc_nsu, motivo: str,
+                           extensao: str = 'xml') -> None:
+        """
+        Preserva em disco um documento que não pôde ser processado
+        (parse falhou, sem vínculo com a empresa etc.), para que nada
+        recebido da distribuição seja perdido.
+        """
+        if not conteudo:
+            return
+        try:
+            dir_path = self._base_xmls_dir() / empresa.cnpj / 'quarentena'
+            dir_path.mkdir(parents=True, exist_ok=True)
+            file_path = dir_path / f"nsu_{doc_nsu}_{motivo}.{extensao}"
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(conteudo)
+            logger.info(f"Documento NSU {doc_nsu} preservado em quarentena: {file_path}")
+        except Exception as e:
+            logger.error(f"Erro ao salvar quarentena do NSU {doc_nsu}: {e}")
+
     def _salvar_xml(self, empresa: Empresa, parsed_data: dict, tipo: str, xml_content: str) -> Path:
         """
         Salva XML em arquivo
-        
+
         Args:
             empresa: Empresa
             parsed_data: Dados parseados
             tipo: Tipo da nota
             xml_content: Conteúdo XML
-        
+
         Returns:
             Path do arquivo salvo
         """
@@ -278,19 +497,8 @@ class DownloadService:
             now = datetime.now()
             ano = now.year
             mes = f"{now.month:02d}"
-        
-        # Buscar caminho customizado das configurações
-        try:
-            config_repo = SchedulerConfigRepository()
-            custom_dir = config_repo.get("xmls_dir")
-            if custom_dir and os.path.exists(custom_dir):
-                base_xmls_dir = Path(custom_dir)
-            else:
-                base_xmls_dir = config.XMLS_DIR
-        except Exception:
-            base_xmls_dir = config.XMLS_DIR
-            
-        dir_path = base_xmls_dir / empresa.cnpj / tipo.lower() / str(ano) / mes
+
+        dir_path = self._base_xmls_dir() / empresa.cnpj / tipo.lower() / str(ano) / mes
         dir_path.mkdir(parents=True, exist_ok=True)
         
         # Nome do arquivo: {numero}_{chave}.xml
@@ -336,38 +544,59 @@ class DownloadService:
             logger.error(f"Erro ao mover arquivo XML {old_path} para {new_path}: {e}")
             return old_path_str
             
-    def _processar_evento(self, parsed_data: dict, doc_nsu: int) -> None:
-        """Processa um evento de cancelamento ou substituição"""
+    def _processar_evento(self, parsed_data: dict, doc_nsu) -> None:
+        """
+        Processa um evento de cancelamento ou substituição.
+
+        Atualiza TODAS as notas com a chave (a mesma nota pode existir para
+        mais de uma empresa cadastrada). Se a nota ainda não foi baixada,
+        o evento fica pendente e é aplicado quando a nota chegar.
+        """
         chave_acesso = parsed_data.get('chave_acesso')
         novo_status = parsed_data.get('status')
-        
+
         logger.info(f"Evento recebido (NSU {doc_nsu}): Chave={chave_acesso}, Status={novo_status}")
-        
-        if chave_acesso and novo_status in ('CANCELADA', 'SUBSTITUIDA'):
-            # Buscar nota no banco
-            nfse_existente = self.nfse_repository.get_by_chave(chave_acesso)
-            
-            if nfse_existente and nfse_existente.status == 'NORMAL':
-                logger.info(f"Atualizando nota {chave_acesso} para {novo_status}")
-                
-                nfse_existente.status = novo_status
-                
-                # Remanejar arquivo físico do XML
-                if nfse_existente.xml_path:
-                    novo_caminho = self._mover_arquivo_xml_status(nfse_existente.xml_path, novo_status)
-                    if novo_caminho:
-                        nfse_existente.xml_path = novo_caminho
-                            
-                # Salvar atualização no banco
-                self.nfse_repository.update(nfse_existente)
+
+        if not chave_acesso or novo_status not in ('CANCELADA', 'SUBSTITUIDA'):
+            return
+
+        notas = self.nfse_repository.get_all_by_chave(chave_acesso)
+
+        if not notas:
+            # Evento chegou antes da nota: guardar para aplicar depois
+            logger.info(f"Nota {chave_acesso} ainda não existe — evento {novo_status} ficará pendente")
+            self.evento_pendente_repository.add(chave_acesso, novo_status)
+            return
+
+        for nfse_existente in notas:
+            if nfse_existente.status != 'NORMAL':
+                continue
+
+            logger.info(f"Atualizando nota {chave_acesso} (empresa {nfse_existente.empresa_id}) para {novo_status}")
+            nfse_existente.status = novo_status
+
+            # Remanejar arquivo físico do XML
+            if nfse_existente.xml_path:
+                novo_caminho = self._mover_arquivo_xml_status(nfse_existente.xml_path, novo_status)
+                if novo_caminho:
+                    nfse_existente.xml_path = novo_caminho
+
+            self.nfse_repository.update(nfse_existente)
 
     def _processar_nfse(self, parsed_data: dict, empresa: Empresa, tipo_nfse: str, xml_content: str) -> None:
         """Processa e salva uma nova NFS-e"""
         chave_acesso = parsed_data.get('chave_acesso')
-        
+
+        # data_emissao é NOT NULL no banco: usar competência como fallback
+        # para não perder a nota por causa de um layout de data inesperado
+        if not parsed_data.get('data_emissao'):
+            fallback = parsed_data.get('data_competencia') or datetime.now().date()
+            logger.warning(f"Nota {chave_acesso} sem data de emissão parseável — usando {fallback}")
+            parsed_data['data_emissao'] = fallback
+
         # Salvar XML em arquivo (SEMPRE salva, independente do filtro de tipo)
         xml_path = self._salvar_xml(empresa, parsed_data, tipo_nfse, xml_content)
-        
+
         # Criar objeto NFSe
         nfse = NFSe(
             empresa_id=empresa.id,
@@ -389,9 +618,38 @@ class DownloadService:
             status=parsed_data.get('status', 'NORMAL'),
             xml_path=str(xml_path)
         )
-        
+
         # Salvar no banco (SEMPRE salva para não pular NSU)
-        self.nfse_repository.create(nfse)
+        nfse.id = self.nfse_repository.create(nfse)
+
+        # Aplicar evento que tenha chegado antes da nota (cancelamento/substituição)
+        self._aplicar_eventos_pendentes(nfse)
+
+    def _aplicar_eventos_pendentes(self, nfse: NFSe) -> None:
+        """Aplica à nota recém-salva eventos que chegaram antes dela"""
+        try:
+            pendentes = self.evento_pendente_repository.get_by_chave(nfse.chave_acesso)
+            if not pendentes:
+                return
+
+            # O último evento registrado prevalece
+            novo_status = pendentes[-1]
+            logger.info(f"Aplicando evento pendente {novo_status} à nota {nfse.chave_acesso}")
+
+            nfse.status = novo_status
+            if nfse.xml_path:
+                novo_caminho = self._mover_arquivo_xml_status(nfse.xml_path, novo_status)
+                if novo_caminho:
+                    nfse.xml_path = novo_caminho
+
+            self.nfse_repository.update(nfse)
+
+            # Só limpar pendências se a nota já existe para todas as empresas
+            # possíveis é impossível de saber; manter o registro é inofensivo
+            # (aplicação é idempotente), mas removemos para não acumular.
+            self.evento_pendente_repository.delete_by_chave(nfse.chave_acesso)
+        except Exception as e:
+            logger.error(f"Erro ao aplicar eventos pendentes da chave {nfse.chave_acesso}: {e}")
 
 
 class DuplicateNFSeError(Exception):

@@ -32,11 +32,13 @@ def init_database():
     """)
     
     # Tabela de NFS-e
+    # A chave de acesso é única POR EMPRESA (não global): a mesma nota pode
+    # pertencer a duas empresas cadastradas (uma como prestadora, outra como tomadora)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS nfse (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             empresa_id INTEGER NOT NULL,
-            chave_acesso TEXT UNIQUE NOT NULL,
+            chave_acesso TEXT NOT NULL,
             numero TEXT,
             serie TEXT,
             numero_dps TEXT,
@@ -57,7 +59,20 @@ def init_database():
             xml_path TEXT,
             downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
+            FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
+            UNIQUE(empresa_id, chave_acesso)
+        )
+    """)
+
+    # Eventos (cancelamento/substituição) que chegaram antes da respectiva nota.
+    # São aplicados assim que a nota correspondente for salva.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS eventos_pendentes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chave_acesso TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('CANCELADA', 'SUBSTITUIDA')),
+            recebido_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(chave_acesso, status)
         )
     """)
     
@@ -195,9 +210,94 @@ def migrate():
         CREATE INDEX IF NOT EXISTS idx_sync_logs_empresa
         ON sync_logs(empresa_id, started_at DESC)
     """)
-        
+
+    # Tabela de eventos pendentes (migração para bancos antigos)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS eventos_pendentes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chave_acesso TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('CANCELADA', 'SUBSTITUIDA')),
+            recebido_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(chave_acesso, status)
+        )
+    """)
+
     conn.commit()
+
+    # Trocar UNIQUE(chave_acesso) global por UNIQUE(empresa_id, chave_acesso)
+    _migrar_dedupe_por_empresa(conn)
+
     conn.close()
+
+
+def _migrar_dedupe_por_empresa(conn):
+    """
+    Bancos antigos têm chave_acesso UNIQUE global, o que impede que a mesma
+    nota exista para duas empresas cadastradas (prestadora e tomadora).
+    SQLite não permite alterar constraints, então a tabela é reconstruída.
+    """
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='nfse'")
+    row = cursor.fetchone()
+    if not row or 'UNIQUE(empresa_id, chave_acesso)' in (row[0] or ''):
+        return  # Já migrado (ou tabela inexistente)
+
+    logger.info("Migrando tabela nfse para UNIQUE(empresa_id, chave_acesso)...")
+
+    colunas = """id, empresa_id, chave_acesso, numero, serie, numero_dps, tipo,
+            data_emissao, data_competencia, prestador_cnpj, prestador_nome,
+            tomador_cnpj, tomador_nome, valor_servicos, valor_iss, codigo_servico,
+            codigo_tributacao_nacional, codigo_tributacao_municipal,
+            descricao_servico, status, xml_path, downloaded_at, created_at"""
+
+    cursor.execute("PRAGMA foreign_keys=off")
+    try:
+        with conn:
+            cursor.execute("""
+                CREATE TABLE nfse_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    empresa_id INTEGER NOT NULL,
+                    chave_acesso TEXT NOT NULL,
+                    numero TEXT,
+                    serie TEXT,
+                    numero_dps TEXT,
+                    tipo TEXT NOT NULL CHECK(tipo IN ('EMITIDA', 'RECEBIDA')),
+                    data_emissao DATE NOT NULL,
+                    data_competencia DATE,
+                    prestador_cnpj TEXT,
+                    prestador_nome TEXT,
+                    tomador_cnpj TEXT,
+                    tomador_nome TEXT,
+                    valor_servicos DECIMAL(15, 2),
+                    valor_iss DECIMAL(15, 2),
+                    codigo_servico TEXT,
+                    codigo_tributacao_nacional TEXT,
+                    codigo_tributacao_municipal TEXT,
+                    descricao_servico TEXT,
+                    status TEXT DEFAULT 'NORMAL' CHECK(status IN ('NORMAL', 'CANCELADA', 'SUBSTITUIDA')),
+                    xml_path TEXT,
+                    downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
+                    UNIQUE(empresa_id, chave_acesso)
+                )
+            """)
+            cursor.execute(f"INSERT INTO nfse_new ({colunas}) SELECT {colunas} FROM nfse")
+            cursor.execute("DROP TABLE nfse")
+            cursor.execute("ALTER TABLE nfse_new RENAME TO nfse")
+
+            # Recriar índices perdidos com o DROP
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_empresa_tipo ON nfse(empresa_id, tipo)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_chave_acesso ON nfse(chave_acesso)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_data_emissao ON nfse(data_emissao)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_data_competencia ON nfse(data_competencia)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_prestador_cnpj ON nfse(prestador_cnpj)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_tomador_cnpj ON nfse(tomador_cnpj)")
+
+        logger.info("✅ Migração de dedupe por empresa concluída")
+    finally:
+        cursor.execute("PRAGMA foreign_keys=on")
 
 
 def _migrar_numero_dps(cursor):
