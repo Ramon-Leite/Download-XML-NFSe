@@ -18,7 +18,7 @@
         rel="stylesheet" />
     <!-- ChartJS for beautiful Bento Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="/static/style.css?v=2.2.0">
+    <link rel="stylesheet" href="/static/style.css?v=2.4.0">
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -380,11 +380,28 @@
                 <!-- Critical/Warning Certificate Alerts -->
                 <div id="empresas-alerts-container" class="mb-6 space-y-2 hidden"></div>
 
-                <!-- Companies Cards Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="empresas-cards-container">
-                    <!-- Dynamic cards filled by JS -->
-                    <div class="col-span-full text-center py-20 text-on-surface-variant">
-                        <p class="text-sm">Buscando empresas cadastradas...</p>
+                <!-- Companies Table (layout em linhas, estilo Integra Contador) -->
+                <div class="bg-surface border border-border/60 rounded-2xl shadow-xs overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr
+                                    class="bg-surface-container-low border-b border-border/60 text-[10px] uppercase tracking-wider font-semibold text-on-surface-variant">
+                                    <th class="px-5 py-3.5">Empresa</th>
+                                    <th class="px-5 py-3.5">CNPJ</th>
+                                    <th class="px-5 py-3.5">Certificado A1</th>
+                                    <th class="px-5 py-3.5 text-right">Último NSU</th>
+                                    <th class="px-5 py-3.5 text-center">Situação</th>
+                                    <th class="px-5 py-3.5 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="empresas-table-body" class="divide-y divide-border/40">
+                                <tr>
+                                    <td colspan="6" class="text-center py-20 text-on-surface-variant text-sm">Buscando
+                                        empresas cadastradas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -590,97 +607,84 @@
             <!-- 4. NOTAS FISCAIS VIEW -->
             <div id="view-notas" class="spa-view hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <!-- Left Sidebar Filters -->
-                    <div
-                        class="lg:col-span-3 bg-surface border border-border/60 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
-                        <h3 class="font-bold text-title-md text-on-surface mb-1 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">filter_alt</span>
-                            Filtros de Busca
-                        </h3>
-
-                        <!-- Search query -->
-                        <div>
-                            <label class="block text-xs font-semibold text-on-surface-variant mb-1">Busca
-                                Textual</label>
-                            <div class="relative">
-                                <input type="text" id="filter-notas-busca" placeholder="Nº, Prestador, Tomador..."
-                                    class="w-full h-10 pl-8 pr-3 text-xs border border-border rounded-lg focus:border-primary focus:ring-primary bg-surface-container-lowest">
-                                <span
-                                    class="material-symbols-outlined text-[16px] text-on-surface-variant absolute left-2.5 top-3 select-none">search</span>
+                    <!-- Filtros (barra horizontal no topo, largura total) -->
+                    <div class="lg:col-span-12 bg-surface border border-border/60 rounded-2xl p-4 shadow-sm">
+                        <div class="flex flex-col lg:flex-row lg:items-end gap-3">
+                            <!-- Busca textual -->
+                            <div class="flex-1 min-w-[180px]">
+                                <label class="block text-xs font-semibold text-on-surface-variant mb-1">Busca
+                                    Textual</label>
+                                <div class="relative">
+                                    <input type="text" id="filter-notas-busca" placeholder="Nº, Prestador, Tomador..."
+                                        class="w-full h-10 pl-8 pr-3 text-xs border border-border rounded-lg focus:border-primary focus:ring-primary bg-surface-container-lowest">
+                                    <span
+                                        class="material-symbols-outlined text-[16px] text-on-surface-variant absolute left-2.5 top-3 select-none">search</span>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Company Select -->
-                        <div>
-                            <label class="block text-xs font-semibold text-on-surface-variant mb-1">Empresa</label>
-                            <select id="filter-notas-empresa"
-                                class="w-full h-10 px-2 text-xs border border-border rounded-lg focus:border-primary bg-surface-container-lowest">
-                                <option value="todas">Todas as Empresas</option>
-                            </select>
-                        </div>
+                            <!-- Empresa -->
+                            <div class="w-full lg:w-52">
+                                <label class="block text-xs font-semibold text-on-surface-variant mb-1">Empresa</label>
+                                <select id="filter-notas-empresa"
+                                    class="w-full h-10 px-2 text-xs border border-border rounded-lg focus:border-primary bg-surface-container-lowest">
+                                    <option value="todas">Todas as Empresas</option>
+                                </select>
+                            </div>
 
-                        <!-- Type Select -->
-                        <div>
-                            <label class="block text-xs font-semibold text-on-surface-variant mb-1">Tipo da Nota</label>
-                            <select id="filter-notas-tipo"
-                                class="w-full h-10 px-2 text-xs border border-border rounded-lg focus:border-primary bg-surface-container-lowest">
-                                <option value="todas" selected>Todas as Notas</option>
-                                <option value="EMITIDA">Emitidas (Normais)</option>
-                                <option value="RECEBIDA">Recebidas (Normais)</option>
-                                <option value="CANCELADA">Canceladas</option>
-                                <option value="SUBSTITUIDA">Substituídas</option>
-                            </select>
-                        </div>
+                            <!-- Tipo -->
+                            <div class="w-full lg:w-44">
+                                <label class="block text-xs font-semibold text-on-surface-variant mb-1">Tipo da
+                                    Nota</label>
+                                <select id="filter-notas-tipo"
+                                    class="w-full h-10 px-2 text-xs border border-border rounded-lg focus:border-primary bg-surface-container-lowest">
+                                    <option value="todas" selected>Todas as Notas</option>
+                                    <option value="EMITIDA">Emitidas (Normais)</option>
+                                    <option value="RECEBIDA">Recebidas (Normais)</option>
+                                    <option value="CANCELADA">Canceladas</option>
+                                    <option value="SUBSTITUIDA">Substituídas</option>
+                                </select>
+                            </div>
 
-                        <!-- Date range toggle -->
-                        <div class="space-y-2 pt-2 border-t border-border/40">
-                            <div class="flex items-center gap-2">
+                            <!-- Toggle período -->
+                            <div class="flex items-center gap-1.5 h-10">
                                 <input type="checkbox" id="filter-notas-enable-data"
                                     class="h-4 w-4 text-primary border-border rounded">
                                 <label for="filter-notas-enable-data"
-                                    class="text-xs text-on-surface font-semibold select-none">Filtrar por
-                                    Período</label>
+                                    class="text-xs text-on-surface font-semibold select-none whitespace-nowrap">Filtrar
+                                    por Período</label>
                             </div>
 
-                            <div id="filter-notas-data-fields" class="space-y-2 hidden">
-                                <div>
-                                    <label
-                                        class="block text-[10px] font-semibold text-on-surface-variant mb-0.5">Filtrar
-                                        Campo</label>
-                                    <div class="flex gap-2">
-                                        <label class="flex items-center gap-1 text-[11px]"><input type="radio"
-                                                name="filter-campo-data" value="emissao" checked>Emissão</label>
-                                        <label class="flex items-center gap-1 text-[11px]"><input type="radio"
-                                                name="filter-campo-data" value="competencia">Competência</label>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label
-                                            class="block text-[10px] font-semibold text-on-surface-variant mb-0.5">De</label>
-                                        <input type="date" id="filter-notas-data-inicio"
-                                            class="w-full h-9 px-2 text-xs border border-border rounded-lg">
-                                    </div>
-                                    <div>
-                                        <label
-                                            class="block text-[10px] font-semibold text-on-surface-variant mb-0.5">Até</label>
-                                        <input type="date" id="filter-notas-data-fim"
-                                            class="w-full h-9 px-2 text-xs border border-border rounded-lg">
-                                    </div>
-                                </div>
+                            <!-- Aplicar -->
+                            <div>
+                                <button onclick="refreshNotasTable(1)"
+                                    class="w-full lg:w-auto h-10 px-5 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-medium text-xs flex items-center justify-center gap-1 whitespace-nowrap">
+                                    <span class="material-symbols-outlined text-[16px]">refresh</span>
+                                    Aplicar Filtros
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Trigger Button -->
-                        <button onclick="refreshNotasTable(1)"
-                            class="w-full h-10 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-medium text-xs flex items-center justify-center gap-1">
-                            <span class="material-symbols-outlined text-[16px]">refresh</span>
-                            Aplicar Filtros
-                        </button>
+                        <!-- Campos de data (aparecem ao marcar "Filtrar por Período") -->
+                        <div id="filter-notas-data-fields" class="hidden mt-3 pt-3 border-t border-border/40">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-[11px] font-semibold text-on-surface-variant">Período de:</span>
+                                <input type="date" id="filter-notas-data-inicio"
+                                    class="h-9 px-2 text-xs border border-border rounded-lg bg-surface-container-lowest">
+                                <span class="text-[11px] text-on-surface-variant">até</span>
+                                <input type="date" id="filter-notas-data-fim"
+                                    class="h-9 px-2 text-xs border border-border rounded-lg bg-surface-container-lowest">
+                                <span
+                                    class="text-[11px] font-semibold text-on-surface-variant pl-2">Considerar:</span>
+                                <label class="flex items-center gap-1 text-[11px]"><input type="radio"
+                                        name="filter-campo-data" value="emissao" checked>Emissão</label>
+                                <label class="flex items-center gap-1 text-[11px]"><input type="radio"
+                                        name="filter-campo-data" value="competencia">Competência</label>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Table Data View -->
-                    <div class="lg:col-span-9 space-y-6">
+                    <!-- Table Data View (largura total) -->
+                    <div class="lg:col-span-12 space-y-6">
                         <!-- Gap Detection banner (hidden initially) -->
                         <div id="notas-gap-banner"
                             class="hidden bg-warning/10 text-on-surface border border-warning/30 rounded-xl p-4 flex items-start gap-3 shadow-sm">
@@ -1472,7 +1476,7 @@
     </div>
 
     <!-- SPA Application Core -->
-    <script src="/static/app.js?v=2.2.0"></script>
+    <script src="/static/app.js?v=2.4.0"></script>
 </body>
 
 </html>

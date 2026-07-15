@@ -87,6 +87,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Carregar dados iniciais das empresas do backend
     loadEmpresas();
+
+    // Verificar se a última atualização do sistema aplicou tudo corretamente
+    verificarResultadoAtualizacao();
 });
 
 // 3. ROTEADOR DE TELAS DA SPA (CLIENT-SIDE ROUTING)
@@ -436,77 +439,72 @@ function checkCertificatesAlerts() {
 }
 
 function renderEmpresasCards() {
-    const container = document.getElementById("empresas-cards-container");
-    if (!container) return;
+    // Renderiza as empresas em LINHAS (tabela), no estilo do Integra Contador.
+    const tbody = document.getElementById("empresas-table-body");
+    if (!tbody) return;
 
     if (AppState.empresas.length === 0) {
-        container.innerHTML = `
-            <div class="col-span-full bg-surface border border-border rounded-2xl p-12 text-center text-on-surface-variant">
-                <span class="material-symbols-outlined text-5xl text-primary opacity-60">business_center</span>
-                <h4 class="font-bold text-title-md mt-4 text-on-surface">Nenhuma empresa cadastrada</h4>
-                <p class="text-xs mt-1">Cadastre sua primeira empresa emissora ou tomadora para iniciar a gestão.</p>
-            </div>
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-16 text-on-surface-variant">
+                    <span class="material-symbols-outlined text-4xl text-primary opacity-60">business_center</span>
+                    <p class="font-bold text-sm mt-3 text-on-surface">Nenhuma empresa cadastrada</p>
+                    <p class="text-xs mt-1">Cadastre sua primeira empresa emissora ou tomadora para iniciar a gestão.</p>
+                </td>
+            </tr>
         `;
         return;
     }
 
-    container.innerHTML = "";
+    tbody.innerHTML = "";
     AppState.empresas.forEach(emp => {
         const days = emp.certificado_dias_restantes;
         let badgeColor = "bg-success/10 text-success border-success/30";
-        let statusText = `Valido - ${days} dias restantes`;
-        
+        let statusText = `${days} dias`;
+        let certIcon = "verified";
+
         if (days >= 0 && days <= 30) {
             badgeColor = "bg-warning/10 text-warning border-warning/30";
             statusText = `Vence em ${days} dias`;
+            certIcon = "warning";
         } else if (days < 0) {
             badgeColor = "bg-error/10 text-error border-error/30";
-            statusText = "Expirado / Inválido";
+            statusText = "Expirado";
+            certIcon = "error";
         }
 
-        const card = document.createElement("div");
-        card.className = "bg-surface border border-border/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between hover:shadow-md transition-all bento-card relative overflow-hidden";
-        card.innerHTML = `
-            <!-- Top info -->
-            <div>
-                <div class="flex justify-between items-start mb-3 gap-2">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${badgeColor}">
-                        ${statusText}
-                    </span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold ${emp.ativo ? 'bg-primary/10 text-primary' : 'bg-secondary-container text-on-secondary-container'}">
-                        ${emp.ativo ? 'ATIVA' : 'INATIVA'}
-                    </span>
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-surface-container-low transition-colors";
+        tr.innerHTML = `
+            <td class="px-5 py-3">
+                <div class="font-semibold text-on-surface line-clamp-1">${emp.razao_social}</div>
+                <div class="text-[11px] text-on-surface-variant line-clamp-1">${emp.nome_fantasia || "Sem nome fantasia"}</div>
+            </td>
+            <td class="px-5 py-3 font-mono text-on-surface-variant whitespace-nowrap">${emp.cnpj_formatado}</td>
+            <td class="px-5 py-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeColor}">
+                    <span class="material-symbols-outlined text-[13px]">${certIcon}</span>${statusText}
+                </span>
+                <div class="text-[10px] text-on-surface-variant mt-0.5">${emp.certificado_vencimento || ""}</div>
+            </td>
+            <td class="px-5 py-3 text-right font-mono font-bold text-primary whitespace-nowrap">${emp.ultimo_nsu || 0}</td>
+            <td class="px-5 py-3 text-center">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${emp.ativo ? 'bg-primary/10 text-primary' : 'bg-secondary-container text-on-secondary-container'}">
+                    ${emp.ativo ? 'ATIVA' : 'INATIVA'}
+                </span>
+            </td>
+            <td class="px-5 py-3">
+                <div class="flex items-center justify-center gap-1.5">
+                    <button onclick="openCadastroModal(${emp.id})" class="h-8 px-3 border border-border rounded-lg text-[11px] font-semibold flex items-center gap-1 hover:bg-surface-container transition-all" title="Editar empresa">
+                        <span class="material-symbols-outlined text-[15px]">edit</span> Editar
+                    </button>
+                    <button onclick="excluirEmpresa(${emp.id})" class="h-8 w-8 bg-error/10 text-error rounded-lg flex items-center justify-center hover:bg-error/20 transition-all" title="Excluir empresa">
+                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
                 </div>
-                <h3 class="font-bold text-title-md text-on-surface line-clamp-1">${emp.razao_social}</h3>
-                <p class="text-xs text-on-surface-variant mt-0.5">${emp.nome_fantasia || "Sem Nome Fantasia"}</p>
-                
-                <div class="mt-4 space-y-2 border-t border-border/40 pt-4 text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-on-surface-variant">CNPJ:</span>
-                        <span class="font-semibold text-on-surface">${emp.cnpj_formatado}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-on-surface-variant">Expiração:</span>
-                        <span class="font-semibold text-on-surface">${emp.certificado_vencimento}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-on-surface-variant">Último NSU:</span>
-                        <span class="font-mono text-primary font-bold">${emp.ultimo_nsu || 0}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Actions buttons -->
-            <div class="flex gap-2.5 border-t border-border/40 pt-4 mt-6">
-                <button onclick="openCadastroModal(${emp.id})" class="flex-1 h-9 border border-border rounded-xl text-xs font-semibold flex items-center justify-center gap-1 hover:bg-surface-container transition-all">
-                    <span class="material-symbols-outlined text-[16px]">edit</span> Editar
-                </button>
-                <button onclick="excluirEmpresa(${emp.id})" class="h-9 w-9 bg-error/10 text-error rounded-xl flex items-center justify-center hover:bg-error/20 transition-all" title="Excluir Empresa">
-                    <span class="material-symbols-outlined text-[18px]">delete</span>
-                </button>
-            </div>
+            </td>
         `;
-        container.appendChild(card);
+        tbody.appendChild(tr);
     });
 }
 
@@ -2362,8 +2360,11 @@ async function executarAtualizacaoSistema() {
         
         const res = await response.json();
         if (response.ok && res.success) {
-            showToast("Arquivos atualizados com sucesso! Reconectando ao sistema...", "success");
-            
+            // NÃO dizer "concluído" aqui: o updater ainda vai rodar em segundo
+            // plano. A confirmação real vem depois, quando o novo servidor sobe
+            // e o app lê o resultado da atualização (verificarResultadoAtualizacao).
+            showToast("Pacote baixado. Aplicando e reiniciando o sistema...", "info");
+
             // Polling de recarregamento para aguardar o boot do novo servidor
             let attempts = 0;
             const reloadInterval = setInterval(async () => {
@@ -2372,13 +2373,14 @@ async function executarAtualizacaoSistema() {
                     const chk = await fetch("/api/agendador/status");
                     if (chk.ok) {
                         clearInterval(reloadInterval);
-                        showToast("Sistema reiniciado e atualizado!", "success");
+                        // O aviso de sucesso/falha real é dado por
+                        // verificarResultadoAtualizacao() após o reload.
                         setTimeout(() => window.location.reload(), 1000);
                     }
                 } catch (err) {
-                    if (attempts > 15) {
+                    if (attempts > 20) {
                         clearInterval(reloadInterval);
-                        showToast("Atualização executada. Se o painel não recarregar, execute o Iniciar_Sistema.bat.", "warning");
+                        showToast("O sistema não voltou sozinho. Verifique se a atualização foi aplicada ou rode o Iniciar_Sistema.bat.", "warning");
                     }
                 }
             }, 2000);
@@ -2391,6 +2393,36 @@ async function executarAtualizacaoSistema() {
             btn.removeAttribute("disabled");
             btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">download_for_offline</span> Atualizar e Reiniciar Agora`;
         }
+    }
+}
+
+// Ao iniciar, confere se a última atualização aplicou todos os arquivos.
+// Fecha a lacuna do "sucesso silencioso": se algum arquivo não foi trocado,
+// o usuário é avisado de forma clara em vez de o sistema quebrar sem explicação.
+async function verificarResultadoAtualizacao() {
+    try {
+        const response = await fetch("/api/atualizador/resultado");
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data.tem_resultado) return;
+
+        if (data.sucesso) {
+            const msg = `Atualização aplicada com sucesso (${data.aplicados} arquivos).`;
+            showToast(msg, "success");
+            addNotification(msg, "success");
+        } else {
+            const qtd = (data.falhas || []).length;
+            const lista = (data.falhas || []).map(f => f.arquivo).slice(0, 5).join(", ");
+            const msg = data.erro_geral
+                ? `A atualização falhou: ${data.erro_geral}. Reaplique o pacote ou instale manualmente.`
+                : `Atenção: a atualização não trocou ${qtd} arquivo(s) (${lista}${qtd > 5 ? '...' : ''}). ` +
+                  `O sistema pode ficar instável — rode a atualização novamente ou aplique o pacote manualmente.`;
+            showToast(msg, "error");
+            addNotification(msg, "error");
+        }
+    } catch (e) {
+        // Falha ao checar o resultado não deve atrapalhar o carregamento do app
+        console.warn("Não foi possível verificar o resultado da atualização:", e);
     }
 }
 

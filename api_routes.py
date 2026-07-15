@@ -1127,7 +1127,7 @@ def _versao_tupla(v):
 
 @router.get("/atualizador/checar")
 def checar_atualizacao():
-    versao_local = "1.2"
+    versao_local = "1.3"
     try:
         import requests
         import urllib3
@@ -1217,9 +1217,45 @@ def executar_atualizacao(url_download: str = Form(...)):
             os._exit(0)
             
         threading.Thread(target=shutdown_server, daemon=True).start()
-        
+
         return {"success": True, "message": "Atualização em andamento. O sistema irá reiniciar em instantes."}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar auto-atualização: {str(e)}")
+
+
+@router.get("/atualizador/resultado")
+def resultado_atualizacao():
+    """
+    Retorna o resultado da última atualização aplicada pelo updater e o limpa
+    em seguida (é mostrado uma única vez). Assim o app avisa o usuário se algum
+    arquivo não foi trocado, em vez de a atualização "falhar em silêncio".
+    """
+    import json
+    result_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data", "temp", "update_result.json"
+    )
+    if not os.path.exists(result_path):
+        return {"tem_resultado": False}
+
+    try:
+        with open(result_path, "r", encoding="utf-8") as f:
+            dados = json.load(f)
+    except Exception:
+        return {"tem_resultado": False}
+    finally:
+        try:
+            os.remove(result_path)  # mostra só uma vez
+        except Exception:
+            pass
+
+    falhas = dados.get("falhas", []) or []
+    return {
+        "tem_resultado": True,
+        "sucesso": not falhas and not dados.get("erro_geral"),
+        "aplicados": dados.get("aplicados", 0),
+        "falhas": falhas,
+        "erro_geral": dados.get("erro_geral"),
+        "timestamp": dados.get("timestamp"),
+    }
 

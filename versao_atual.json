@@ -1,6 +1,6 @@
 {
-  "versao": "1.2",
-  "notas_versao": "🚀 Correções importantes no download e nova busca ativa de notas!\n- 🔎 Busca ativa: recupera notas faltantes consultando a SEFIN Nacional pela numeração da DPS.\n- 🛠️ Corrigida a causa de notas que 'sumiam' no download (paginação por NSU e ponteiro seguro — agora salva tudo o que a Receita distribui).\n- 🏢 A mesma nota pode existir para duas empresas cadastradas (prestadora e tomadora).\n- 📅 Corrigidas as datas que apareciam com 1 dia a menos.\n- ✅ Notas substituídas/canceladas não contam mais como 'faltantes'.\n- 🎨 Nova identidade visual azul-marinho.",
-  "url_download": "https://github.com/Ramon-Leite/Download-XML-NFSe/releases/download/v1.2/update.zip",
-  "data_release": "2026-07-12"
+  "versao": "1.3",
+  "notas_versao": "🔧 Atualização de manutenção e melhorias visuais.\n- 🛡️ Sistema de atualização mais seguro: não falha mais em silêncio, espera os arquivos liberarem e avisa se algum não for aplicado.\n- 🏢 Tela de Empresas agora em lista (linhas), mais compacta e fácil de navegar.\n- 📋 Tela de Notas Fiscais reorganizada: filtros no topo e tabela em largura total (bem menos rolagem lateral).",
+  "url_download": "https://github.com/Ramon-Leite/Download-XML-NFSe/releases/download/v1.3/update.zip",
+  "data_release": "2026-07-14"
 }
