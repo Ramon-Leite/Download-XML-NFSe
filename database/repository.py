@@ -14,6 +14,18 @@ logger = logging.getLogger(__name__)
 # Campos de data válidos para uso em queries (whitelist contra SQL injection)
 VALID_DATE_FIELDS = {'data_emissao', 'data_competencia'}
 
+# Tempo que uma escrita espera o banco ser liberado antes de falhar com "database is locked".
+# Necessário no modo servidor: vários navegadores + o agendador escrevem ao mesmo tempo.
+BUSY_TIMEOUT_MS = 10000
+
+
+def _conectar(db_path) -> sqlite3.Connection:
+    """Abre conexão com o banco já configurada para uso multiusuário."""
+    conn = sqlite3.connect(db_path, timeout=BUSY_TIMEOUT_MS / 1000)
+    conn.row_factory = sqlite3.Row
+    conn.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
+    return conn
+
 
 class EmpresaRepository:
     """Repositório para operações com empresas"""
@@ -23,8 +35,7 @@ class EmpresaRepository:
     
     def _get_connection(self) -> sqlite3.Connection:
         """Cria conexão com o banco"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = _conectar(self.db_path)
         return conn
     
     def create(self, empresa: Empresa) -> int:
@@ -140,8 +151,7 @@ class NFSeRepository:
     
     def _get_connection(self) -> sqlite3.Connection:
         """Cria conexão com o banco"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = _conectar(self.db_path)
         return conn
     
     def create(self, nfse: NFSe) -> int:
@@ -518,8 +528,7 @@ class SyncLogRepository:
         self.db_path = config.DATABASE_PATH
     
     def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = _conectar(self.db_path)
         return conn
     
     def create(self, log: SyncLog) -> int:
@@ -580,8 +589,7 @@ class SchedulerConfigRepository:
         self.db_path = config.DATABASE_PATH
     
     def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = _conectar(self.db_path)
         return conn
     
     def get(self, key: str, default: str = None) -> Optional[str]:
@@ -620,8 +628,7 @@ class EventoPendenteRepository:
         self.db_path = config.DATABASE_PATH
 
     def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = _conectar(self.db_path)
         return conn
 
     def add(self, chave_acesso: str, status: str) -> None:

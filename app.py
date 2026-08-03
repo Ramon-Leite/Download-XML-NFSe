@@ -135,18 +135,22 @@ def open_browser_app(url: str):
 
 
 if __name__ == "__main__":
-    port = 8000
-    host = "127.0.0.1"
-    url = f"http://{host}:{port}"
-    
+    # MODO SERVIDOR (NFSE_SERVIDOR=1): a máquina é o servidor do escritório.
+    # Escuta em toda a rede local e NÃO abre navegador (ninguém olha a tela dela).
+    # Sem a variável, o comportamento continua o de sempre: só localhost e abre o app.
+    modo_servidor = os.getenv("NFSE_SERVIDOR") == "1"
+    port = int(os.getenv("NFSE_PORT", "8000"))
+    host = "0.0.0.0" if modo_servidor else "127.0.0.1"
+    url = f"http://127.0.0.1:{port}"
+
     # Dispara a abertura do navegador apenas se a porta não estiver ocupada (evita abrir janelas extras no reload)
-    if not is_port_in_use(port):
+    if not modo_servidor and not is_port_in_use(port):
         threading.Thread(target=open_browser_app, args=(url,), daemon=True).start()
-        
+
     # Desativa o reload automático se executado via pythonw.exe ou pelo launcher (evita travamentos/crashes em segundo plano)
     is_launcher = os.getenv("NFSE_LAUNCHER") == "1"
     is_pythonw = os.path.basename(sys.executable).lower().startswith("pythonw")
-    should_reload = not (is_launcher or is_pythonw)
-    
-    logger.info(f"Iniciando servidor em: {url} (reload={should_reload})")
+    should_reload = not (is_launcher or is_pythonw or modo_servidor)
+
+    logger.info(f"Iniciando servidor em {host}:{port} (modo_servidor={modo_servidor}, reload={should_reload})")
     uvicorn.run("app:app", host=host, port=port, reload=should_reload)

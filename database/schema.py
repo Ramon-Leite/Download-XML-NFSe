@@ -13,8 +13,17 @@ def init_database():
     Inicializa o banco de dados criando todas as tabelas necessárias
     """
     conn = sqlite3.connect(config.DATABASE_PATH)
+
+    # WAL: permite leituras simultâneas enquanto uma escrita acontece.
+    # É propriedade persistente do arquivo .db — basta ligar uma vez.
+    # Sem isso, no modo servidor, um download longo trava as telas dos outros usuários.
+    try:
+        conn.execute("PRAGMA journal_mode = WAL")
+    except sqlite3.Error as e:
+        logger.warning(f"Não foi possível ativar o modo WAL no banco: {e}")
+
     cursor = conn.cursor()
-    
+
     # Tabela de empresas
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS empresas (
