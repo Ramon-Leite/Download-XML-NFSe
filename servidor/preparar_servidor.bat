@@ -44,10 +44,11 @@ if errorlevel 1 (
 )
 
 echo [4/4] Configurando energia (o servidor nao pode dormir)...
-powercfg /change standby-timeout-ac 0
-powercfg /change hibernate-timeout-ac 0
-powercfg /change disk-timeout-ac 0
 powercfg /change monitor-timeout-ac 15
+REM O resto - hibernacao, suspensao e o tempo limite de suspensao NAO
+REM ASSISTIDA (o ajuste oculto que derruba a maquina mesmo com os outros
+REM zerados) - fica no script dedicado abaixo.
+call "%~dp0manter_acordado.bat" /semPausa
 
 echo.
 echo === PASSO 1 CONCLUIDO ===
