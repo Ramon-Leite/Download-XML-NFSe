@@ -30,6 +30,11 @@ if errorlevel 1 (
     echo AVISO: falhou ao criar a tarefa de backup.
 )
 
+REM Se a maquina estiver desligada ou reiniciando no horario, o Windows
+REM simplesmente PULA o dia. Isso manda rodar assim que ela voltar.
+REM O schtasks nao expoe essa opcao, entao vai pelo PowerShell.
+powershell -NoProfile -Command "$t = Get-ScheduledTask -TaskName 'NFSe Backup'; $t.Settings.StartWhenAvailable = $true; Set-ScheduledTask -TaskName 'NFSe Backup' -Settings $t.Settings | Out-Null" >nul 2>&1
+
 echo.
 echo === PASSO 2 CONCLUIDO ===
 echo.
