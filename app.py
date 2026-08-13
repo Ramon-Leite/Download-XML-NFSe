@@ -62,7 +62,12 @@ def get_index():
     if not index_path.exists():
         # Fallback to API docs if index.html hasn't been built yet
         return RedirectResponse(url="/docs")
-    return FileResponse(index_path)
+    # no-cache = revalida antes de usar (nao e "nao guarde"): o navegador
+    # continua reaproveitando o arquivo via 304, so nao serve versao velha
+    # sem perguntar. Sem isso o index.html fica preso no cache do navegador
+    # e o "?v=" do app.js nunca chega, anulando o cache busting justamente
+    # depois de uma atualizacao do servidor.
+    return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
 
 
 # Serve Custom Favicon

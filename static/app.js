@@ -90,9 +90,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Carregar dados iniciais das empresas do backend
     loadEmpresas();
-
-    // Verificar se a última atualização do sistema aplicou tudo corretamente
-    verificarResultadoAtualizacao();
 });
 
 // 3. ROTEADOR DE TELAS DA SPA (CLIENT-SIDE ROUTING)
@@ -2334,8 +2331,6 @@ async function salvarConfigXmlsDir() {
 }
 
 // Armazena a URL de download remota da nova versão
-let remoteDownloadUrl = "";
-
 // A versão do sistema é o commit em uso: desde que o servidor passou a se
 // atualizar por git pull, não existe mais número de release para exibir.
 async function carregarVersaoSistema() {
@@ -2366,142 +2361,6 @@ async function carregarVersaoSistema() {
     } catch {
         alvo.innerText = "indisponível";
         if (detalhe) detalhe.innerText = "Não foi possível ler o commit em uso.";
-    }
-}
-
-async function checarAtualizacaoSistema() {
-    const btn = document.getElementById("btn-checar-update");
-    const infoBox = document.getElementById("updater-info-box");
-    const title = document.getElementById("updater-info-title");
-    const desc = document.getElementById("updater-info-desc");
-    const notes = document.getElementById("updater-notes-box");
-    
-    if (btn) {
-        btn.setAttribute("disabled", "true");
-        btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> Procurando...`;
-    }
-    
-    try {
-        showToast("Consultando servidor de atualizações...", "info");
-        const response = await fetch("/api/atualizador/checar");
-        if (!response.ok) throw new Error("Erro de conexão com o atualizador.");
-        
-        const data = await response.json();
-        
-        if (data.update_disponivel) {
-            showToast("Nova versão do Fiscal Manager localizada!", "success");
-            remoteDownloadUrl = data.url_download;
-            
-            if (title) title.innerText = `Nova Versão v${data.versao_remota} Disponível!`;
-            if (desc) desc.innerText = `Versão local: v${data.versao_local} | Lançada em nuvem.`;
-            if (notes) notes.innerHTML = `<strong>Notas da Versão:</strong><br>${data.notes_versao || data.notas_versao || 'Nenhuma nota fornecida.'}`;
-            
-            if (infoBox) infoBox.classList.remove("hidden");
-        } else {
-            showToast("Seu sistema está 100% atualizado!", "success");
-            if (infoBox) infoBox.classList.add("hidden");
-        }
-    } catch (e) {
-        showToast(`Falha na consulta: ${e.message}`, "error");
-    } finally {
-        if (btn) {
-            btn.removeAttribute("disabled");
-            btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">sync</span> Procurando Atualizações`;
-        }
-    }
-}
-
-async function executarAtualizacaoSistema() {
-    if (!remoteDownloadUrl) {
-        showToast("Nenhuma URL de atualização configurada.", "warning");
-        return;
-    }
-    
-    if (!confirm("⚠️ CONFIRMAÇÃO DE ATUALIZAÇÃO:\nDeseja prosseguir com a atualização do sistema?\n\nO servidor será desligado em segundo plano e reiniciado automaticamente com os novos códigos. Todos os seus dados de empresas, certificados e notas fiscais salvos serão 100% preservados!")) {
-        return;
-    }
-    
-    const btn = document.getElementById("btn-executar-update");
-    if (btn) {
-        btn.setAttribute("disabled", "true");
-        btn.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin font-bold">autorenew</span> Atualizando sistema... Aguarde.`;
-    }
-    
-    try {
-        const form = new FormData();
-        form.append("url_download", remoteDownloadUrl);
-        
-        showToast("Baixando pacote estável e preparando extração...", "info");
-        const response = await fetch("/api/atualizador/executar", {
-            method: "POST",
-            body: form
-        });
-        
-        const res = await response.json();
-        if (response.ok && res.success) {
-            // NÃO dizer "concluído" aqui: o updater ainda vai rodar em segundo
-            // plano. A confirmação real vem depois, quando o novo servidor sobe
-            // e o app lê o resultado da atualização (verificarResultadoAtualizacao).
-            showToast("Pacote baixado. Aplicando e reiniciando o sistema...", "info");
-
-            // Polling de recarregamento para aguardar o boot do novo servidor
-            let attempts = 0;
-            const reloadInterval = setInterval(async () => {
-                attempts++;
-                try {
-                    const chk = await fetch("/api/agendador/status");
-                    if (chk.ok) {
-                        clearInterval(reloadInterval);
-                        // O aviso de sucesso/falha real é dado por
-                        // verificarResultadoAtualizacao() após o reload.
-                        setTimeout(() => window.location.reload(), 1000);
-                    }
-                } catch (err) {
-                    if (attempts > 20) {
-                        clearInterval(reloadInterval);
-                        showToast("O sistema não voltou sozinho. Verifique se a atualização foi aplicada ou rode o Iniciar_Sistema.bat.", "warning");
-                    }
-                }
-            }, 2000);
-        } else {
-            throw new Error(res.detail || "Falha na execução.");
-        }
-    } catch (e) {
-        showToast(`Erro na atualização: ${e.message}`, "error");
-        if (btn) {
-            btn.removeAttribute("disabled");
-            btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">download_for_offline</span> Atualizar e Reiniciar Agora`;
-        }
-    }
-}
-
-// Ao iniciar, confere se a última atualização aplicou todos os arquivos.
-// Fecha a lacuna do "sucesso silencioso": se algum arquivo não foi trocado,
-// o usuário é avisado de forma clara em vez de o sistema quebrar sem explicação.
-async function verificarResultadoAtualizacao() {
-    try {
-        const response = await fetch("/api/atualizador/resultado");
-        if (!response.ok) return;
-        const data = await response.json();
-        if (!data.tem_resultado) return;
-
-        if (data.sucesso) {
-            const msg = `Atualização aplicada com sucesso (${data.aplicados} arquivos).`;
-            showToast(msg, "success");
-            addNotification(msg, "success");
-        } else {
-            const qtd = (data.falhas || []).length;
-            const lista = (data.falhas || []).map(f => f.arquivo).slice(0, 5).join(", ");
-            const msg = data.erro_geral
-                ? `A atualização falhou: ${data.erro_geral}. Reaplique o pacote ou instale manualmente.`
-                : `Atenção: a atualização não trocou ${qtd} arquivo(s) (${lista}${qtd > 5 ? '...' : ''}). ` +
-                  `O sistema pode ficar instável — rode a atualização novamente ou aplique o pacote manualmente.`;
-            showToast(msg, "error");
-            addNotification(msg, "error");
-        }
-    } catch (e) {
-        // Falha ao checar o resultado não deve atrapalhar o carregamento do app
-        console.warn("Não foi possível verificar o resultado da atualização:", e);
     }
 }
 
