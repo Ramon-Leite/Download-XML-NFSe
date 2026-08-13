@@ -67,6 +67,15 @@ class NFSe:
     tomador_nome: Optional[str] = None
     valor_servicos: Optional[Decimal] = None
     valor_iss: Optional[Decimal] = None
+    # Impostos retidos (ver api/retencoes.py). iss_retido guarda o vISSQN só quando
+    # a flag tpRetISSQN indica retenção; valor_retencoes é a soma de todos.
+    iss_retido: Optional[Decimal] = None
+    ret_pis: Optional[Decimal] = None
+    ret_cofins: Optional[Decimal] = None
+    ret_irrf: Optional[Decimal] = None
+    ret_csll: Optional[Decimal] = None
+    ret_inss: Optional[Decimal] = None
+    valor_retencoes: Optional[Decimal] = None
     codigo_servico: Optional[str] = None
     codigo_tributacao_nacional: Optional[str] = None
     codigo_tributacao_municipal: Optional[str] = None
@@ -122,6 +131,13 @@ class NFSe:
             'tomador_nome': self.tomador_nome,
             'valor_servicos': float(self.valor_servicos) if self.valor_servicos else None,
             'valor_iss': float(self.valor_iss) if self.valor_iss else None,
+            'iss_retido': float(self.iss_retido or 0),
+            'ret_pis': float(self.ret_pis or 0),
+            'ret_cofins': float(self.ret_cofins or 0),
+            'ret_irrf': float(self.ret_irrf or 0),
+            'ret_csll': float(self.ret_csll or 0),
+            'ret_inss': float(self.ret_inss or 0),
+            'valor_retencoes': float(self.valor_retencoes or 0),
             'codigo_servico': self.codigo_servico,
             'codigo_tributacao_nacional': self.codigo_tributacao_nacional,
             'codigo_tributacao_municipal': self.codigo_tributacao_municipal,

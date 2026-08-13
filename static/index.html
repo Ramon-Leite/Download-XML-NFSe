@@ -781,6 +781,7 @@
                                         <col style="width: 250px;"> <!-- Prestador -->
                                         <col style="width: 250px;"> <!-- Tomador -->
                                         <col style="width: 112px;"> <!-- Valor -->
+                                        <col style="width: 116px;"> <!-- Retenções -->
                                         <col style="width: 112px;"> <!-- Status -->
                                         <col style="width: 80px;"> <!-- Ações -->
                                     </colgroup>
@@ -790,33 +791,37 @@
                                                 class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider">
                                             </th>
                                             <th onclick="ordenarNotasTable('numero')"
-                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
                                                 Número <span id="sort-icon-numero" class="text-[10px]"></span>
                                             </th>
                                             <th onclick="ordenarNotasTable('numero_dps')"
-                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
                                                 Nº DPS <span id="sort-icon-numero_dps" class="text-[10px]"></span>
                                             </th>
                                             <th onclick="ordenarNotasTable('serie')"
-                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
                                                 Série <span id="sort-icon-serie" class="text-[10px]"></span>
                                             </th>
                                             <th onclick="ordenarNotasTable('data_emissao')"
-                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
                                                 Emissão <span id="sort-icon-data_emissao" class="text-[10px]"></span>
                                             </th>
                                             <th onclick="ordenarNotasTable('prestador_nome')"
-                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
                                                 Prestador <span id="sort-icon-prestador_nome"
                                                     class="text-[10px]"></span>
                                             </th>
                                             <th onclick="ordenarNotasTable('tomador_nome')"
-                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider cursor-pointer hover:text-primary transition-colors select-none">
+                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
                                                 Tomador <span id="sort-icon-tomador_nome" class="text-[10px]"></span>
                                             </th>
                                             <th onclick="ordenarNotasTable('valor_servicos')"
-                                                class="px-6 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-right cursor-pointer hover:text-primary transition-colors select-none">
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
                                                 Valor <span id="sort-icon-valor_servicos" class="text-[10px]"></span>
+                                            </th>
+                                            <th onclick="ordenarNotasTable('valor_retencoes')"
+                                                class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
+                                                Retenções <span id="sort-icon-valor_retencoes" class="text-[10px]"></span>
                                             </th>
                                             <th onclick="ordenarNotasTable('status')"
                                                 class="px-4 py-3 font-semibold text-on-surface-variant uppercase tracking-wider text-center cursor-pointer hover:text-primary transition-colors select-none">
@@ -866,6 +871,14 @@
                                                     class="w-full h-8 px-2 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary text-right">
                                             </th>
                                             <th class="px-2 py-1.5">
+                                                <select onchange="filtrarNotasColuna('retencao', this.value)"
+                                                    class="w-full h-8 px-1 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
+                                                    <option value="">Todas</option>
+                                                    <option value="com">Com retenção</option>
+                                                    <option value="sem">Sem retenção</option>
+                                                </select>
+                                            </th>
+                                            <th class="px-2 py-1.5">
                                                 <select onchange="filtrarNotasColuna('status', this.value)"
                                                     class="w-full h-8 px-1 text-[10px] border border-border rounded bg-surface-container-lowest focus:border-primary">
                                                     <option value="">Todos</option>
@@ -880,7 +893,7 @@
                                     <tbody class="divide-y divide-border/40" id="notas-table-body">
                                         <!-- Rows generated by JS -->
                                         <tr>
-                                            <td colspan="10" class="text-center py-20 text-on-surface-variant">Selecione
+                                            <td colspan="11" class="text-center py-20 text-on-surface-variant">Selecione
                                                 filtros e clique em Aplicar.</td>
                                         </tr>
                                     </tbody>
@@ -1476,7 +1489,7 @@
     </div>
 
     <!-- SPA Application Core -->
-    <script src="/static/app.js?v=2.4.0"></script>
+    <script src="/static/app.js?v=2.5.0"></script>
 </body>
 
 </html>

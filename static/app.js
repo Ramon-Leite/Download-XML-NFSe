@@ -25,6 +25,7 @@ const AppState = {
         prestador_nome: '',
         tomador_nome: '',
         valor_servicos: '',
+        retencao: '',
         status: ''
     },
     sortColumn: null,
@@ -46,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Inicializar SPA
     switchView('dashboard');
-    
+
     // Configurar listeners de data no filtro de notas
     const enableDateFilter = document.getElementById("filter-notas-enable-data");
     if (enableDateFilter) {
@@ -943,6 +944,7 @@ function limparFiltrosColuna() {
         prestador_nome: '',
         tomador_nome: '',
         valor_servicos: '',
+        retencao: '',
         status: ''
     };
     AppState.sortColumn = null;
@@ -958,7 +960,7 @@ function limparFiltrosColuna() {
 }
 
 function updateSortIcons() {
-    const columns = ['numero', 'numero_dps', 'serie', 'data_emissao', 'prestador_nome', 'tomador_nome', 'valor_servicos', 'status'];
+    const columns = ['numero', 'numero_dps', 'serie', 'data_emissao', 'prestador_nome', 'tomador_nome', 'valor_servicos', 'valor_retencoes', 'status'];
     columns.forEach(col => {
         const span = document.getElementById(`sort-icon-${col}`);
         if (!span) return;
@@ -1027,7 +1029,7 @@ async function refreshNotasTable(page = 1) {
     }
 
     const tbody = document.getElementById("notas-table-body");
-    if (tbody) tbody.innerHTML = `<tr><td colspan="10" class="text-center py-20 text-on-surface-variant"><span class="animate-pulse flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[20px] animate-spin">sync</span> Carregando base de dados...</span></td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="text-center py-20 text-on-surface-variant"><span class="animate-pulse flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[20px] animate-spin">sync</span> Carregando base de dados...</span></td></tr>`;
 
     try {
         const response = await fetch(url);
@@ -1110,6 +1112,38 @@ async function buscarNotasFaltantes() {
     }
 }
 
+// Impostos retidos da nota, prontos para exibição
+function retencoesDaNota(nota) {
+    const impostos = [
+        { sigla: 'ISS', valor: parseFloat(nota.iss_retido) || 0 },
+        { sigla: 'INSS', valor: parseFloat(nota.ret_inss) || 0 },
+        { sigla: 'IRRF', valor: parseFloat(nota.ret_irrf) || 0 },
+        { sigla: 'CSLL', valor: parseFloat(nota.ret_csll) || 0 },
+        { sigla: 'PIS', valor: parseFloat(nota.ret_pis) || 0 },
+        { sigla: 'COFINS', valor: parseFloat(nota.ret_cofins) || 0 },
+    ].filter(i => i.valor > 0);
+
+    const total = parseFloat(nota.valor_retencoes) || 0;
+    return {
+        total,
+        tem: total > 0,
+        impostos,
+        // Tooltip com a quebra por imposto
+        detalhe: impostos.map(i => `${i.sigla}: ${formatCurrency(i.valor)}`).join('\n')
+    };
+}
+
+function celulaRetencao(ret) {
+    if (!ret.tem) return `<td class="px-4 py-3 text-on-surface-variant/40">—</td>`;
+    const chips = ret.impostos.map(i =>
+        `<span class="inline-block px-1.5 rounded text-[9px] font-bold bg-warning/15 text-warning mr-0.5">${i.sigla}</span>`
+    ).join('');
+    return `<td class="px-4 py-3" title="${ret.detalhe}">
+                <div class="whitespace-nowrap">${chips}</div>
+                <div class="text-[10px] text-warning font-semibold mt-0.5">${formatCurrency(ret.total)}</div>
+            </td>`;
+}
+
 function renderNotasTable() {
     let filtered = [...AppState.allNotas];
 
@@ -1146,6 +1180,10 @@ function renderNotasTable() {
                 const rawVal = (nota.valor_servicos || 0).toString().toLowerCase();
                 return valorStr.includes(val) || rawVal.includes(val);
             }
+            if (col === 'retencao') {
+                const temRetencao = (parseFloat(nota.valor_retencoes) || 0) > 0;
+                return val === 'com' ? temRetencao : !temRetencao;
+            }
             if (col === 'status') {
                 return (nota.status || '').toString().toLowerCase() === val; // correspondência exata para dropdown status
             }
@@ -1181,6 +1219,9 @@ function renderNotasTable() {
             } else if (col === 'valor_servicos') {
                 valA = parseFloat(a.valor_servicos) || 0;
                 valB = parseFloat(b.valor_servicos) || 0;
+            } else if (col === 'valor_retencoes') {
+                valA = parseFloat(a.valor_retencoes) || 0;
+                valB = parseFloat(b.valor_retencoes) || 0;
             } else if (col === 'status') {
                 valA = (a.status || '').toLowerCase();
                 valB = (b.status || '').toLowerCase();
@@ -1212,7 +1253,7 @@ function renderNotasTable() {
     tbody.innerHTML = "";
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-20 text-on-surface-variant">Nenhuma nota fiscal encontrada para o filtro selecionado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-20 text-on-surface-variant">Nenhuma nota fiscal encontrada para o filtro selecionado.</td></tr>`;
         document.getElementById("notas-paging-msg").innerText = "Mostrando 0 de 0 notas";
         document.getElementById("btn-notas-page-prev").setAttribute("disabled", "true");
         document.getElementById("btn-notas-page-next").setAttribute("disabled", "true");
@@ -1239,6 +1280,8 @@ function renderNotasTable() {
 
         const isChecked = AppState.selectedNotas.has(nota.id) ? 'checked' : '';
 
+        const celulaRet = celulaRetencao(retencoesDaNota(nota));
+
         tr.innerHTML = `
             <td class="px-6 py-3 w-8">
                 <input type="checkbox" value="${nota.id}" ${isChecked} onchange="toggleSelectNota(this)" class="h-4.5 w-4.5 text-primary border-border rounded focus:ring-primary nota-selector">
@@ -1256,6 +1299,7 @@ function renderNotasTable() {
                 <div class="text-[10px] text-on-surface-variant truncate">${nota.tomador_cnpj_formatado}</div>
             </td>
             <td class="px-6 py-3 text-right font-bold text-on-surface">${formatCurrency(nota.valor_servicos)}</td>
+            ${celulaRet}
             <td class="px-4 py-3 text-center">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusBadge}">
                     ${nota.status}

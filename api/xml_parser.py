@@ -7,6 +7,8 @@ from datetime import datetime, date
 from decimal import Decimal
 import logging
 
+from api.retencoes import extrair_retencoes
+
 logger = logging.getLogger(__name__)
 
 
@@ -120,10 +122,23 @@ class XMLParser:
                                 XMLParser._get_text(root, './/vServ')
             data['valor_servicos'] = XMLParser._parse_decimal(valor_servicos_str)
             
-            valor_iss_str = XMLParser._get_text(root, './/ValorIss') or \
+            # No padrão nacional o ISS é vISSQN; vISS/ValorIss são dos layouts antigos.
+            # Sem vISSQN aqui o campo ficava zerado em todas as notas.
+            valor_iss_str = XMLParser._get_text(root, './/vISSQN') or \
+                           XMLParser._get_text(root, './/ValorIss') or \
                            XMLParser._get_text(root, './/VlIss') or \
                            XMLParser._get_text(root, './/vISS')
             data['valor_iss'] = XMLParser._parse_decimal(valor_iss_str)
+
+            # Impostos retidos — regra em api/retencoes.py
+            ret = extrair_retencoes(root)
+            data['iss_retido'] = ret['iss']
+            data['ret_pis'] = ret['pis']
+            data['ret_cofins'] = ret['cofins']
+            data['ret_irrf'] = ret['irrf']
+            data['ret_csll'] = ret['csll']
+            data['ret_inss'] = ret['inss']
+            data['valor_retencoes'] = ret['total']
             
             # Serviço
             data['codigo_servico'] = XMLParser._get_text(root, './/CodigoServico') or \

@@ -345,6 +345,82 @@ class TestMigracaoDedupePorEmpresa:
                 tipo='EMITIDA', data_emissao=date(2026, 5, 10)
             ))
 
+    def test_colunas_de_retencao_sobrevivem_a_migracao(self, tmp_path):
+        """
+        A migração de dedupe RECONSTRÓI a tabela nfse a partir de um CREATE fixo.
+        Se esse CREATE esquecer as colunas de retenção, elas somem sem erro no
+        banco de quem ainda não tinha migrado — e só estoura no primeiro INSERT.
+        """
+        db_path = tmp_path / "old_nfse.db"
+
+        conn = sqlite3.connect(db_path)
+        conn.executescript("""
+            CREATE TABLE empresas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cnpj TEXT UNIQUE NOT NULL,
+                razao_social TEXT NOT NULL,
+                nome_fantasia TEXT,
+                certificado_path TEXT NOT NULL,
+                certificado_senha TEXT NOT NULL,
+                ultimo_nsu INTEGER DEFAULT 0,
+                ativo BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE nfse (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa_id INTEGER NOT NULL,
+                chave_acesso TEXT UNIQUE NOT NULL,
+                numero TEXT,
+                serie TEXT,
+                tipo TEXT NOT NULL CHECK(tipo IN ('EMITIDA', 'RECEBIDA')),
+                data_emissao DATE NOT NULL,
+                data_competencia DATE,
+                prestador_cnpj TEXT,
+                prestador_nome TEXT,
+                tomador_cnpj TEXT,
+                tomador_nome TEXT,
+                valor_servicos DECIMAL(15, 2),
+                valor_iss DECIMAL(15, 2),
+                codigo_servico TEXT,
+                descricao_servico TEXT,
+                status TEXT DEFAULT 'NORMAL' CHECK(status IN ('NORMAL', 'CANCELADA', 'SUBSTITUIDA')),
+                xml_path TEXT,
+                downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
+            );
+            INSERT INTO empresas (cnpj, razao_social, certificado_path, certificado_senha)
+                VALUES ('11111111000111', 'Empresa A', '/c.pfx', 's');
+        """)
+        conn.commit()
+        conn.close()
+
+        with patch('config.DATABASE_PATH', db_path):
+            init_database()
+
+        conn = sqlite3.connect(db_path)
+        colunas = [r[1] for r in conn.execute("PRAGMA table_info(nfse)")]
+        conn.close()
+
+        for coluna in ['iss_retido', 'ret_pis', 'ret_cofins', 'ret_irrf',
+                       'ret_csll', 'ret_inss', 'valor_retencoes']:
+            assert coluna in colunas, f"coluna {coluna} perdida na migração de dedupe"
+
+        # E o INSERT com retenções tem que funcionar de ponta a ponta
+        repo = NFSeRepository()
+        repo.db_path = db_path
+        repo.create(NFSe(
+            empresa_id=1, chave_acesso='CHAVE_RET', tipo='EMITIDA',
+            data_emissao=date(2026, 5, 10), valor_servicos=Decimal('1000.00'),
+            iss_retido=Decimal('50.00'), ret_inss=Decimal('35.00'),
+            valor_retencoes=Decimal('85.00')
+        ))
+
+        nota = repo.get_by_chave('CHAVE_RET')
+        assert nota.iss_retido == Decimal('50.00')
+        assert nota.valor_retencoes == Decimal('85.00')
+
     def test_migracao_e_idempotente(self, tmp_path):
         """Rodar init_database duas vezes não pode quebrar nem duplicar"""
         db_path = tmp_path / "new_nfse.db"

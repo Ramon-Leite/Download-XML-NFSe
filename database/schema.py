@@ -60,6 +60,13 @@ def init_database():
             tomador_nome TEXT,
             valor_servicos DECIMAL(15, 2),
             valor_iss DECIMAL(15, 2),
+            iss_retido DECIMAL(15, 2) DEFAULT 0,
+            ret_pis DECIMAL(15, 2) DEFAULT 0,
+            ret_cofins DECIMAL(15, 2) DEFAULT 0,
+            ret_irrf DECIMAL(15, 2) DEFAULT 0,
+            ret_csll DECIMAL(15, 2) DEFAULT 0,
+            ret_inss DECIMAL(15, 2) DEFAULT 0,
+            valor_retencoes DECIMAL(15, 2) DEFAULT 0,
             codigo_servico TEXT,
             codigo_tributacao_nacional TEXT,
             codigo_tributacao_municipal TEXT,
@@ -190,6 +197,28 @@ def migrate():
         except sqlite3.OperationalError:
             pass # Coluna já pode existir
     
+    # Colunas de impostos retidos (ver api/retencoes.py)
+    colunas_retencao = ['iss_retido', 'ret_pis', 'ret_cofins', 'ret_irrf',
+                        'ret_csll', 'ret_inss', 'valor_retencoes']
+    faltando = [c for c in colunas_retencao if c not in columns]
+    if faltando:
+        for coluna in faltando:
+            try:
+                cursor.execute(f"ALTER TABLE nfse ADD COLUMN {coluna} DECIMAL(15, 2) DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass  # Coluna já pode existir
+        conn.commit()
+        logger.info(f"Colunas de retenção adicionadas à tabela nfse: {', '.join(faltando)}")
+
+        # Reprocessar XMLs existentes para popular as retenções
+        _migrar_retencoes(cursor)
+        conn.commit()
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_valor_retencoes
+        ON nfse(valor_retencoes)
+    """)
+
     # Criar tabelas de agendamento se não existirem (migração para bancos antigos)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS sync_logs (
@@ -256,7 +285,9 @@ def _migrar_dedupe_por_empresa(conn):
 
     colunas = """id, empresa_id, chave_acesso, numero, serie, numero_dps, tipo,
             data_emissao, data_competencia, prestador_cnpj, prestador_nome,
-            tomador_cnpj, tomador_nome, valor_servicos, valor_iss, codigo_servico,
+            tomador_cnpj, tomador_nome, valor_servicos, valor_iss,
+            iss_retido, ret_pis, ret_cofins, ret_irrf, ret_csll, ret_inss,
+            valor_retencoes, codigo_servico,
             codigo_tributacao_nacional, codigo_tributacao_municipal,
             descricao_servico, status, xml_path, downloaded_at, created_at"""
 
@@ -280,6 +311,13 @@ def _migrar_dedupe_por_empresa(conn):
                     tomador_nome TEXT,
                     valor_servicos DECIMAL(15, 2),
                     valor_iss DECIMAL(15, 2),
+                    iss_retido DECIMAL(15, 2) DEFAULT 0,
+                    ret_pis DECIMAL(15, 2) DEFAULT 0,
+                    ret_cofins DECIMAL(15, 2) DEFAULT 0,
+                    ret_irrf DECIMAL(15, 2) DEFAULT 0,
+                    ret_csll DECIMAL(15, 2) DEFAULT 0,
+                    ret_inss DECIMAL(15, 2) DEFAULT 0,
+                    valor_retencoes DECIMAL(15, 2) DEFAULT 0,
                     codigo_servico TEXT,
                     codigo_tributacao_nacional TEXT,
                     codigo_tributacao_municipal TEXT,
@@ -307,6 +345,69 @@ def _migrar_dedupe_por_empresa(conn):
         logger.info("✅ Migração de dedupe por empresa concluída")
     finally:
         cursor.execute("PRAGMA foreign_keys=on")
+
+
+def _migrar_retencoes(cursor):
+    """
+    Reprocessa os XMLs já baixados para preencher as retenções e o valor_iss.
+
+    O valor_iss ficava zerado em todas as notas porque o parser procurava a tag
+    vISS, que não existe no padrão nacional (o correto é vISSQN), então esta
+    migração também o corrige de uma vez.
+    """
+    from lxml import etree
+    from api.retencoes import extrair_retencoes
+
+    cursor.execute("SELECT id, xml_path FROM nfse WHERE xml_path IS NOT NULL")
+    rows = cursor.fetchall()
+
+    if not rows:
+        return
+
+    logger.info(f"Calculando impostos retidos de {len(rows)} notas existentes...")
+    atualizados = 0
+    com_retencao = 0
+    sem_xml = 0
+
+    for row_id, xml_path in rows:
+        try:
+            xml_file = Path(xml_path)
+            if not xml_file.exists():
+                sem_xml += 1
+                continue
+
+            root = etree.fromstring(xml_file.read_text(encoding='utf-8').encode('utf-8'))
+            ret = extrair_retencoes(root)
+
+            # vISSQN só existe na NFS-e; eventos de cancelamento não têm
+            valor_iss = None
+            for el in root.iter():
+                local = el.tag.split('}')[-1] if '}' in el.tag else el.tag
+                if local == 'vISSQN' and el.text:
+                    valor_iss = float(el.text.strip())
+                    break
+
+            cursor.execute("""
+                UPDATE nfse SET iss_retido = ?, ret_pis = ?, ret_cofins = ?,
+                                ret_irrf = ?, ret_csll = ?, ret_inss = ?,
+                                valor_retencoes = ?, valor_iss = COALESCE(?, valor_iss)
+                WHERE id = ?
+            """, (
+                float(ret['iss']), float(ret['pis']), float(ret['cofins']),
+                float(ret['irrf']), float(ret['csll']), float(ret['inss']),
+                float(ret['total']), valor_iss, row_id
+            ))
+            atualizados += 1
+            if ret['total'] > 0:
+                com_retencao += 1
+        except Exception as e:
+            logger.debug(f"Erro ao migrar retenções da nota id={row_id}: {e}")
+
+    logger.info(
+        f"Migração de retenções concluída: {atualizados}/{len(rows)} notas processadas, "
+        f"{com_retencao} com imposto retido"
+        + (f", {sem_xml} sem o arquivo XML" if sem_xml else "")
+    )
 
 
 def _migrar_numero_dps(cursor):

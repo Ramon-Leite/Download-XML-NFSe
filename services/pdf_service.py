@@ -11,6 +11,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
+from api.retencoes import extrair_retencoes, descricao_retencao_iss
+
 logger = logging.getLogger(__name__)
 
 # Largura útil da página A4 com margens de 15mm
@@ -142,13 +144,18 @@ def _extrair_dados_xml(xml_content):
     dados['descricao'] = _get_text(root, './/xDescServ') or \
                          _get_text(root, './/Discriminacao') or ''
     
-    # Retenções de impostos
-    dados['ret_iss'] = _get_text(root, './/vRetISSQN') or _get_text(root, './/vISSRet') or ''
-    dados['ret_pis'] = _get_text(root, './/vRetPIS') or ''
-    dados['ret_cofins'] = _get_text(root, './/vRetCOFINS') or ''
-    dados['ret_irrf'] = _get_text(root, './/vRetIRRF') or _get_text(root, './/vRetIR') or ''
-    dados['ret_inss'] = _get_text(root, './/vRetCP') or _get_text(root, './/vRetINSS') or ''
-    dados['ret_csll'] = _get_text(root, './/vRetCSLL') or ''
+    # Retenções de impostos (ver api/retencoes.py: o ISS retido não tem tag própria,
+    # é o vISSQN quando a flag tpRetISSQN indica retenção)
+    ret = extrair_retencoes(root)
+    dados['ret_iss'] = str(ret['iss'])
+    dados['ret_pis'] = str(ret['pis'])
+    dados['ret_cofins'] = str(ret['cofins'])
+    dados['ret_irrf'] = str(ret['irrf'])
+    dados['ret_inss'] = str(ret['inss'])
+    dados['ret_csll'] = str(ret['csll'])
+    dados['ret_total'] = str(ret['total'])
+    dados['iss_retido'] = ret['iss_retido']
+    dados['ret_iss_desc'] = descricao_retencao_iss(ret['tp_ret_iss'])
     
     # ISS (valor calculado, não retido)
     dados['valor_iss'] = _get_text(root, './/vISSQN') or _get_text(root, './/vISS') or ''
@@ -368,7 +375,10 @@ def gerar_pdf_nfse(xml_content):
     grid_valores = Table(
         [[
             campo("Valor dos Serviços", _fmt_valor(dados['valor_servicos'])),
-            campo("ISS", _fmt_valor(dados['valor_iss']) if dados['valor_iss'] else '-'),
+            campo(
+                "ISS (RETIDO)" if dados['iss_retido'] else "ISS",
+                _fmt_valor(dados['valor_iss']) if dados['valor_iss'] else '-'
+            ),
             [
                 Paragraph("VALOR LÍQUIDO", style_label),
                 Paragraph(f"<b>{_fmt_valor(dados['valor_liquido'])}</b>", style_valor_grande)
@@ -396,29 +406,42 @@ def gerar_pdf_nfse(xml_content):
         'CSLL': dados.get('ret_csll', ''),
     }
     
+    def _positivo(valor):
+        """Valores vêm como texto de Decimal ('0' quando não há retenção)"""
+        try:
+            return float(valor or 0) > 0
+        except ValueError:
+            return False
+
     # Filtrar apenas os que têm valor
-    ret_com_valor = {k: v for k, v in retencoes.items() if v and float(v or 0) > 0}
-    
+    ret_com_valor = {k: v for k, v in retencoes.items() if _positivo(v)}
+
     if ret_com_valor:
         elements.append(Spacer(1, 3 * mm))
         elements.append(Paragraph("RETENÇÕES", style_secao))
-        
-        # Montar células: até 3 por linha
-        ret_items = list(retencoes.items())  # Mostrar todos para contexto
-        
+
+        # Quem reteve o ISS (tomador ou intermediário), quando houver
+        label_iss = "ISS Retido"
+        if dados.get('ret_iss_desc'):
+            label_iss = f"ISS Retido — {dados['ret_iss_desc']}"
+
+        def campo_ret(label, chave):
+            valor = retencoes[chave]
+            return campo(label, _fmt_valor(valor) if _positivo(valor) else '-')
+
         # Linha 1: ISS, PIS, COFINS
         row1 = [
-            campo("ISS Retido", _fmt_valor(retencoes['ISS Retido']) if retencoes['ISS Retido'] else '-'),
-            campo("PIS", _fmt_valor(retencoes['PIS']) if retencoes['PIS'] else '-'),
-            campo("COFINS", _fmt_valor(retencoes['COFINS']) if retencoes['COFINS'] else '-'),
+            campo_ret(label_iss, 'ISS Retido'),
+            campo_ret("PIS", 'PIS'),
+            campo_ret("COFINS", 'COFINS'),
         ]
         # Linha 2: IRRF, INSS, CSLL
         row2 = [
-            campo("IRRF", _fmt_valor(retencoes['IRRF']) if retencoes['IRRF'] else '-'),
-            campo("INSS/CP", _fmt_valor(retencoes['INSS/CP']) if retencoes['INSS/CP'] else '-'),
-            campo("CSLL", _fmt_valor(retencoes['CSLL']) if retencoes['CSLL'] else '-'),
+            campo_ret("IRRF", 'IRRF'),
+            campo_ret("INSS/CP", 'INSS/CP'),
+            campo_ret("CSLL", 'CSLL'),
         ]
-        
+
         grid_retencoes = Table(
             [row1, row2],
             colWidths=[PAGE_WIDTH * 0.333] * 3,
@@ -432,7 +455,27 @@ def gerar_pdf_nfse(xml_content):
             ])
         )
         elements.append(grid_retencoes)
-    
+
+        # Total retido — fecha a conta com o valor líquido
+        grid_total_ret = Table(
+            [[
+                Paragraph("TOTAL DAS RETENÇÕES", style_label),
+                Paragraph(f"<b>{_fmt_valor(dados['ret_total'])}</b>", style_valor),
+            ]],
+            colWidths=[PAGE_WIDTH * 0.666, PAGE_WIDTH * 0.334],
+            style=TableStyle([
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                ('TOPPADDING', (0, 0), (-1, -1), 1.5 * mm),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5 * mm),
+                ('LEFTPADDING', (0, 0), (-1, -1), 2 * mm),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 2 * mm),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fcf3cf')),
+            ])
+        )
+        elements.append(grid_total_ret)
+
     # Alíquota SN
     if dados.get('aliq_total_sn'):
         elements.append(Spacer(1, 2 * mm))

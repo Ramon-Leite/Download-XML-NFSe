@@ -27,6 +27,17 @@ def _conectar(db_path) -> sqlite3.Connection:
     return conn
 
 
+def _dec(row: sqlite3.Row, coluna: str) -> Optional[Decimal]:
+    """
+    Lê uma coluna numérica opcional. Tolera a coluna ainda não existir para o
+    caso do banco ser lido antes da migração ter rodado.
+    """
+    if coluna not in row.keys():
+        return None
+    valor = row[coluna]
+    return Decimal(str(valor)) if valor is not None else None
+
+
 class EmpresaRepository:
     """Repositório para operações com empresas"""
     
@@ -164,15 +175,21 @@ class NFSeRepository:
                     INSERT INTO nfse (
                         empresa_id, chave_acesso, numero, serie, numero_dps, tipo, data_emissao, data_competencia,
                         prestador_cnpj, prestador_nome, tomador_cnpj, tomador_nome,
-                        valor_servicos, valor_iss, codigo_servico, codigo_tributacao_nacional,
+                        valor_servicos, valor_iss, iss_retido, ret_pis, ret_cofins,
+                        ret_irrf, ret_csll, ret_inss, valor_retencoes,
+                        codigo_servico, codigo_tributacao_nacional,
                         codigo_tributacao_municipal, descricao_servico, status, xml_path
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     nfse.empresa_id, nfse.chave_acesso, nfse.numero, nfse.serie, nfse.numero_dps, nfse.tipo,
                     nfse.data_emissao, nfse.data_competencia, nfse.prestador_cnpj, nfse.prestador_nome,
-                    nfse.tomador_cnpj, nfse.tomador_nome, 
+                    nfse.tomador_cnpj, nfse.tomador_nome,
                     float(nfse.valor_servicos) if nfse.valor_servicos else 0.0,
                     float(nfse.valor_iss) if nfse.valor_iss else 0.0,
+                    float(nfse.iss_retido or 0), float(nfse.ret_pis or 0),
+                    float(nfse.ret_cofins or 0), float(nfse.ret_irrf or 0),
+                    float(nfse.ret_csll or 0), float(nfse.ret_inss or 0),
+                    float(nfse.valor_retencoes or 0),
                     nfse.codigo_servico, nfse.codigo_tributacao_nacional,
                     nfse.codigo_tributacao_municipal, nfse.descricao_servico, nfse.status, nfse.xml_path
                 ))
@@ -393,6 +410,13 @@ class NFSeRepository:
             tomador_nome=row['tomador_nome'],
             valor_servicos=Decimal(str(row['valor_servicos'])) if row['valor_servicos'] else None,
             valor_iss=Decimal(str(row['valor_iss'])) if row['valor_iss'] else None,
+            iss_retido=_dec(row, 'iss_retido'),
+            ret_pis=_dec(row, 'ret_pis'),
+            ret_cofins=_dec(row, 'ret_cofins'),
+            ret_irrf=_dec(row, 'ret_irrf'),
+            ret_csll=_dec(row, 'ret_csll'),
+            ret_inss=_dec(row, 'ret_inss'),
+            valor_retencoes=_dec(row, 'valor_retencoes'),
             codigo_servico=row['codigo_servico'],
             codigo_tributacao_nacional=row['codigo_tributacao_nacional'] if 'codigo_tributacao_nacional' in row.keys() else None,
             codigo_tributacao_municipal=row['codigo_tributacao_municipal'] if 'codigo_tributacao_municipal' in row.keys() else None,
