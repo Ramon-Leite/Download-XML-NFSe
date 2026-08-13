@@ -1116,6 +1116,69 @@ def salvar_xmls_dir(xmls_dir: str = Form(...)):
     return {"success": True, "xmls_dir": xmls_dir}
 
 
+def _commit_do_disco():
+    """
+    Lê o commit atual direto dos arquivos do .git, sem depender do binário.
+    Reserva para quando o app roda como SYSTEM (tarefa agendada) e o git
+    não está no PATH desse contexto.
+    """
+    git_dir = config.BASE_DIR / ".git"
+    try:
+        head = (git_dir / "HEAD").read_text(encoding="utf-8").strip()
+        if not head.startswith("ref:"):
+            return head  # HEAD destacado: o próprio sha
+
+        ref = head.split(" ", 1)[1].strip()
+        arquivo_ref = git_dir / ref
+        if arquivo_ref.exists():
+            return arquivo_ref.read_text(encoding="utf-8").strip()
+
+        # Ref empacotada: acontece depois que um "git gc" roda
+        packed = git_dir / "packed-refs"
+        if packed.exists():
+            for linha in packed.read_text(encoding="utf-8").splitlines():
+                if linha.endswith(" " + ref):
+                    return linha.split(" ", 1)[0].strip()
+    except (OSError, IndexError):
+        pass
+    return None
+
+
+@router.get("/versao")
+def obter_versao():
+    """
+    Versão do sistema é o commit em uso.
+
+    O número fixo antigo ("1.3" em checar_atualizacao, "v1.0" na tela) parou
+    de significar qualquer coisa quando o servidor passou a se atualizar por
+    git pull em vez de baixar ZIP de release.
+    """
+    import subprocess
+
+    info = {"commit": None, "commit_curto": None, "assunto": None, "data": None}
+
+    try:
+        # CREATE_NO_WINDOW: sob pythonw, sem isso pisca um console preto
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        r = subprocess.run(
+            ["git", "log", "-1", "--pretty=format:%H%x1f%s%x1f%cI"],
+            cwd=str(config.BASE_DIR), capture_output=True, text=True,
+            timeout=5, encoding="utf-8", creationflags=flags
+        )
+        if r.returncode == 0 and r.stdout:
+            sha, assunto, data = r.stdout.strip().split("\x1f")
+            info.update(commit=sha, commit_curto=sha[:7], assunto=assunto, data=data)
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        logger.debug(f"git indisponível para ler a versão, usando o .git direto: {e}")
+
+    if not info["commit"]:
+        sha = _commit_do_disco()
+        if sha:
+            info.update(commit=sha, commit_curto=sha[:7])
+
+    return {"success": bool(info["commit"]), **info}
+
+
 def _versao_tupla(v):
     """Converte '1.2.3' em (1, 2, 3) para comparação numérica correta.
     Evita a armadilha da comparação de texto, onde '1.10' < '1.9'."""

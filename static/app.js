@@ -48,6 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Inicializar SPA
     switchView('dashboard');
 
+    carregarVersaoSistema();
+
     // Configurar listeners de data no filtro de notas
     const enableDateFilter = document.getElementById("filter-notas-enable-data");
     if (enableDateFilter) {
@@ -2333,6 +2335,39 @@ async function salvarConfigXmlsDir() {
 
 // Armazena a URL de download remota da nova versão
 let remoteDownloadUrl = "";
+
+// A versão do sistema é o commit em uso: desde que o servidor passou a se
+// atualizar por git pull, não existe mais número de release para exibir.
+async function carregarVersaoSistema() {
+    const alvo = document.getElementById("versao-sistema");
+    const detalhe = document.getElementById("versao-sistema-detalhe");
+    if (!alvo) return;
+
+    try {
+        const response = await fetch("/api/versao");
+        const data = await response.json();
+        if (!data.success) throw new Error("commit não encontrado");
+
+        alvo.innerText = data.commit_curto;
+        alvo.title = data.commit || "";
+
+        if (detalhe) {
+            // Sem o binário do git só temos o sha; assunto e data vêm vazios.
+            // A caixa é estreita, então mostra a data (mais útil de relance) e
+            // deixa o assunto do commit no tooltip, que caberia cortado demais.
+            detalhe.innerText = data.data
+                ? new Date(data.data).toLocaleString("pt-BR", {
+                    day: "2-digit", month: "2-digit", year: "numeric",
+                    hour: "2-digit", minute: "2-digit"
+                })
+                : "";
+            detalhe.title = data.assunto || "";
+        }
+    } catch {
+        alvo.innerText = "indisponível";
+        if (detalhe) detalhe.innerText = "Não foi possível ler o commit em uso.";
+    }
+}
 
 async function checarAtualizacaoSistema() {
     const btn = document.getElementById("btn-checar-update");
