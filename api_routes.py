@@ -722,6 +722,16 @@ def exportar_notas(
                 'Tomador': n.tomador_nome or n.tomador_cnpj_formatado or 'N/A',
                 'Valor': float(n.valor_servicos or 0),
                 'Valor ISS': float(n.valor_iss or 0),
+                # Retenções: "Valor ISS" é o ISS apurado, "ISS Retido" é quanto
+                # dele foi de fato retido (0 quando a nota não tem retenção de
+                # ISS). Ver api/retencoes.py.
+                'ISS Retido': float(n.iss_retido or 0),
+                'INSS/CP Retido': float(n.ret_inss or 0),
+                'IRRF Retido': float(n.ret_irrf or 0),
+                'CSLL Retido': float(n.ret_csll or 0),
+                'PIS Retido': float(n.ret_pis or 0),
+                'COFINS Retido': float(n.ret_cofins or 0),
+                'Total Retido': float(n.valor_retencoes or 0),
                 'Código Tributação Nacional': n.codigo_tributacao_nacional or 'N/A',
                 'Código Tributação Municipal': n.codigo_tributacao_municipal or 'N/A',
                 'Status': n.status,
