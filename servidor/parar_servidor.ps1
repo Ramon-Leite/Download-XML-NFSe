@@ -12,7 +12,7 @@
 #
 #  Um processo so entra na mira se atender um destes criterios:
 #    a) o executavel ou a linha de comando apontam para ESTA instalacao
-#       (no servidor o .venv fica dentro da pasta do projeto);
+#       (o venv fica dentro da pasta do projeto, entao o caminho aparece);
 #    b) e um processo Python escutando a porta do sistema -- necessario
 #       porque com o Python do sistema, e nao o do venv, o caminho do
 #       projeto nao aparece na linha de comando, so no diretorio de
@@ -23,12 +23,17 @@
 #  Parametros (sem nenhum, para de verdade):
 #    -Listar   mostra os alvos sem encerrar nada
 #    -Contar   imprime so a quantidade, para scripts
-#    -Porta    porta do sistema (padrao 8000)
+#    -Porta    porta do sistema
+#    -Tarefa   nome da tarefa agendada
+#
+#  Os outros sistemas do escritorio (Integra Contador, REINF) tem uma copia
+#  deste arquivo, identica exceto pelos padroes abaixo.
 # ============================================================
 param(
     [switch]$Listar,
     [switch]$Contar,
-    [int]$Porta = 8000
+    [int]$Porta = 8000,
+    [string]$Tarefa = 'NFSe Servidor'
 )
 
 $raiz = (Resolve-Path (Split-Path -Parent $PSScriptRoot)).Path
@@ -77,7 +82,7 @@ if ($Contar) {
 if ($alvos.Count -eq 0) {
     if (-not $Listar) {
         Write-Host 'Parando a tarefa agendada...'
-        schtasks /end /tn "NFSe Servidor" 2>&1 | Out-Null
+        schtasks /end /tn $Tarefa 2>&1 | Out-Null
     }
     Write-Host '  Nenhum processo do sistema encontrado (ja estava parado).' -ForegroundColor Yellow
     return
@@ -95,7 +100,7 @@ if ($Listar) {
 }
 
 Write-Host 'Parando a tarefa agendada...'
-schtasks /end /tn "NFSe Servidor" 2>&1 | Out-Null
+schtasks /end /tn $Tarefa 2>&1 | Out-Null
 
 foreach ($p in $alvos) {
     try {
